@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/app",
+    "types": []
+  },  "files": [
+    "src/integration/bootstrap/main.ts",
+    "src/integration/bootstrap/main.server.ts",
+    "server.ts"
+  ],
+  "include": [
+    "src/**/*.d.ts"
+  ]
+}

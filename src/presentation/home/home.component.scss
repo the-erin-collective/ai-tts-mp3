@@ -1,0 +1,75 @@
+.success-message {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #c3e6cb;
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+
+.click-message {
+  font-size: 18px;
+  margin-bottom: 20px;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.button-group {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  
+  .btn-secondary {
+    background-color: #6c757d;
+    
+    &:hover {
+      background-color: #545b62;
+    }
+  }
+}
+
+.features-list {
+  list-style: none;
+  
+  li {
+    padding: 8px 0;
+    font-size: 16px;
+    border-bottom: 1px solid #e9ecef;
+    
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+}
+
+.architecture-info {
+  p {
+    margin-bottom: 16px;
+    color: #495057;
+  }
+}
+
+.layers-list {
+  margin-left: 20px;
+  
+  li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+    
+    strong {
+      color: #2c3e50;
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .button-group {
+    flex-direction: column;
+    
+    .btn {
+      width: 100%;
+    }
+  }
+}

@@ -1,54 +1,169 @@
 <div class="container">
-  <div class="card">
-    <!-- Using Angular 20 signal interpolation -->
+  <div class="header-card">
     <h1>{{ title() }}</h1>
+    <p class="subtitle">Convert text to speech using AI providers</p>
+  </div>
+
+  <!-- Settings Configuration -->
+  <div class="card">
+    <h2>🔧 TTS Settings</h2>
     
-    <!-- Using Angular 20 @if control flow -->
-    @if (clickCount() > 0) {
-      <div class="success-message">
-        🎉 Signals are reactive and working perfectly!
+    <div class="settings-grid">
+      <div class="form-group">
+        <label for="provider">Provider:</label>
+        <select 
+          id="provider" 
+          [(ngModel)]="selectedProvider" 
+          (change)="onProviderChange()"
+          class="form-control">
+          @for (provider of providers; track provider) {
+            <option [value]="provider">{{ provider | titlecase }}</option>
+          }
+        </select>
       </div>
-    }
-    
-    <!-- Computed signal display -->
-    <p class="click-message">{{ clickMessage() }}</p>
-    
-    <!-- Button interactions -->
-    <div class="button-group">
-      <button class="btn" (click)="incrementClick()">
-        Click Me! ({{ clickCount() }})
-      </button>
-      
-      @if (clickCount() > 0) {
-        <button class="btn btn-secondary" (click)="resetCount()">
-          Reset
-        </button>
-      }
+
+      <div class="form-group">
+        <label for="model">Model:</label>
+        <select 
+          id="model" 
+          [(ngModel)]="selectedModel" 
+          class="form-control">
+          @for (model of models(); track model) {
+            <option [value]="model">{{ model }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="voice">Voice:</label>
+        <select 
+          id="voice" 
+          [(ngModel)]="selectedVoice" 
+          class="form-control">
+          @for (voice of voices; track voice) {
+            <option [value]="voice">{{ voice | titlecase }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="form-group full-width">
+        <label for="apiKey">API Key:</label>
+        <input 
+          type="password" 
+          id="apiKey" 
+          [(ngModel)]="apiKey" 
+          placeholder="Enter your API key"
+          class="form-control">
+      </div>
     </div>
   </div>
 
+  <!-- Text Input -->
   <div class="card">
-    <h2>Angular 20 Features Demonstrated</h2>
+    <h2>📝 Text Input</h2>
     
-    <!-- Using Angular 20 @for control flow -->
-    <ul class="features-list">
-      @for (feature of features(); track feature) {
-        <li>✅ {{ feature }}</li>
-      }
-    </ul>
+    <div class="form-group">
+      <label for="textInput">Text to convert to speech:</label>
+      <textarea 
+        id="textInput"
+        [(ngModel)]="inputText"
+        rows="4"
+        placeholder="Enter the text you want to convert to speech..."
+        class="form-control textarea"
+        [disabled]="isProcessing()">
+      </textarea>
+    </div>
+
+    <div class="character-count">
+      Characters: {{ inputText().length }} / 4000
+    </div>
   </div>
 
+  <!-- Generation Controls -->
   <div class="card">
-    <h2>Onion Architecture Layers</h2>
+    <h2>🎵 Generate Speech</h2>
+    
+    <div class="generation-controls">
+      <button 
+        class="btn btn-primary"
+        (click)="generateSpeech()"
+        [disabled]="!canGenerate()">
+        @if (isProcessing()) {
+          <span class="spinner"></span> Generating...
+        } @else {
+          🎤 Generate Speech
+        }
+      </button>
+
+      @if (currentResult() && currentResult()?.status === 'completed') {
+        <button class="btn btn-success" (click)="playAudio()">
+          ▶️ Play Audio
+        </button>
+        
+        <button class="btn btn-info" (click)="downloadAudio()">
+          💾 Download MP3
+        </button>
+      }
+
+      @if (currentResult()) {
+        <button class="btn btn-secondary" (click)="clearResult()">
+          🗑️ Clear
+        </button>
+      }
+    </div>
+
+    <!-- Status Display -->
+    @if (statusMessage()) {
+      <div class="status-message" 
+           [class.error]="currentResult()?.status === 'failed'"
+           [class.success]="currentResult()?.status === 'completed'"
+           [class.processing]="isProcessing()">
+        {{ statusMessage() }}
+      </div>
+    }
+
+    @if (errorMessage()) {
+      <div class="error-message">
+        ⚠️ {{ errorMessage() }}
+      </div>
+    }
+
+    <!-- Audio Info -->
+    @if (currentResult()?.status === 'completed') {
+      <div class="audio-info">
+        <div class="info-grid">
+          @if (currentResult()?.duration) {
+            <div class="info-item">
+              <strong>Duration:</strong> {{ currentResult()?.duration }}s
+            </div>
+          }
+          @if (currentResult()?.fileSize) {
+            <div class="info-item">
+              <strong>File Size:</strong> {{ (currentResult()?.fileSize! / 1024) | number:'1.1-1' }}KB
+            </div>
+          }
+          @if (currentResult()?.processingTime) {
+            <div class="info-item">
+              <strong>Processing Time:</strong> {{ currentResult()?.processingTime }}ms
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Architecture Info -->
+  <div class="card">
+    <h2>🏗️ Onion Architecture Implementation</h2>
     <div class="architecture-info">
-      <p>This application is structured using the Onion Architecture with the following layers:</p>
+      <p>This TTS application demonstrates Onion Architecture with Angular 20:</p>
       <ol class="layers-list">
-        <li><strong>Common</strong> - Shared utilities and cross-cutting concerns</li>
-        <li><strong>Domain</strong> - Pure business logic (core)</li>
-        <li><strong>Enactment</strong> - Application services and use cases</li>
-        <li><strong>Infrastructure</strong> - External concerns (databases, APIs)</li>
-        <li><strong>Integration</strong> - Framework adapters</li>
-        <li><strong>Presentation</strong> - UI layer (this component!)</li>
+        <li><strong>Domain</strong> - TTS entities, value objects, and business rules</li>
+        <li><strong>Enactment</strong> - TTS application services and use cases</li>
+        <li><strong>Infrastructure</strong> - In-memory repositories and local storage</li>
+        <li><strong>Integration</strong> - Angular service adapters</li>
+        <li><strong>Presentation</strong> - This UI component with Angular 20 signals</li>
+        <li><strong>Common</strong> - Shared utilities and result patterns</li>
       </ol>
     </div>
   </div>

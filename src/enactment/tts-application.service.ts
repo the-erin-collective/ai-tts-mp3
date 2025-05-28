@@ -18,15 +18,20 @@ import { ProviderConfig, ProviderError, ProviderErrorType } from '../domain/prov
 import { AudioMetadata, AudioFormat, AudioQuality } from '../domain/audio.entity';
 import { Result } from '../common/result';
 import { Logger } from '../common/utils';
+import { OpenAITTSService } from '../infrastructure/openai-tts.service';
 
 // Application Service for TTS operations
 export class TTSApplicationService {
+  private readonly openAITTS: OpenAITTSService;
+
   constructor(
     private readonly queryRepository: TTSQueryRepository,
     private readonly resultRepository: TTSResultRepository,
     private readonly settingsRepository: TTSSettingsRepository,
     private readonly domainService: TTSDomainService
-  ) {}
+  ) {
+    this.openAITTS = new OpenAITTSService();
+  }
 
   async createTTSQuery(
     text: string, 
@@ -97,24 +102,42 @@ export class TTSApplicationService {
       const query = await this.queryRepository.findById(new QueryId(queryId));
       if (!query) {
         return Result.failure('Query not found');
-      }
-
-      // Update status to processing
+      }      // Update status to processing
       await this.resultRepository.updateStatus(query.id, TTSResultStatus.PROCESSING);
 
-      // Here you would integrate with the actual TTS providers
-      // For now, we'll simulate the processing
+      // Calculate estimated cost
       const estimatedCost = await this.domainService.estimateCost(query);
       Logger.info('Estimated cost for query', { queryId, cost: estimatedCost });
 
-      // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Generate speech using OpenAI TTS API
+      let audioData: Uint8Array;
+      let duration: number;
 
-      // Simulate successful result (in real implementation, this would call the provider)
-      const mockAudioData = new Uint8Array([/* mock MP3 data */]);
-      const duration = this.estimateDuration(query.text.getValue());
+      if (query.settings.provider === 'openai') {
+        try {
+          audioData = await this.openAITTS.generateSpeech(query.text, query.settings);
+          duration = this.estimateDuration(query.text.getValue());
+        } catch (error) {
+          Logger.error('OpenAI TTS API failed', error as Error, { queryId });
+            if (error instanceof ProviderError) {
+            await this.resultRepository.updateWithError(query.id, {
+              code: error.type,
+              message: error.message,
+              details: error
+            });
+            return Result.failure(error.message);
+          }
+          
+          throw error;
+        }
+      } else {
+        // Fallback for other providers (mock data for now)
+        Logger.warn('Using mock data for non-OpenAI provider', { provider: query.settings.provider });
+        audioData = new Uint8Array([/* mock MP3 data */]);
+        duration = this.estimateDuration(query.text.getValue());
+      }
 
-      await this.resultRepository.updateWithAudio(query.id, mockAudioData, duration);
+      await this.resultRepository.updateWithAudio(query.id, audioData, duration);
 
       const result = await this.resultRepository.findByQueryId(query.id);
       if (!result) {

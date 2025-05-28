@@ -77,13 +77,14 @@ export class HomeComponent {
   constructor(private ttsService: AngularTTSService) {
     this.loadSavedSettings();
   }
-
   async generateSpeech() {
     if (!this.canGenerate()) return;
 
     try {
       this.isProcessing.set(true);
       this.errorMessage.set('');
+      // Auto-clear previous results when starting new generation
+      this.currentResult.set(null);
 
       const settings: TTSSettings = {
         provider: this.selectedProvider(),

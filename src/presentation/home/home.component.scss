@@ -68,13 +68,27 @@
   font-family: inherit;
   background: #0d1117;
   color: #e6edf3;
-  transition: border-color 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
 }
 
 .input:focus {
   outline: none;
   border-color: #1f6feb;
-  box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.1);
+  box-shadow: 
+    0 0 0 3px rgba(31, 111, 235, 0.1),
+    0 2px 4px rgba(31, 111, 235, 0.2),
+    0 0 0 1px rgba(31, 111, 235, 0.3) inset;
+  transform: translateY(-1px);
+}
+
+.input:hover:not(:focus) {
+  border-color: #484f58;
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
 }
 
 .input option {
@@ -91,6 +105,27 @@
   font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
   letter-spacing: 0.5px;
   color: #e6edf3;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+.api-key:focus {
+  outline: none;
+  border-color: #1f6feb;
+  box-shadow: 
+    0 0 0 3px rgba(31, 111, 235, 0.1),
+    0 2px 4px rgba(31, 111, 235, 0.2),
+    0 0 0 1px rgba(31, 111, 235, 0.3) inset;
+  transform: translateY(-1px);
+}
+
+.api-key:hover:not(:focus) {
+  border-color: #484f58;
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
 }
 
 .api-generate-row {
@@ -104,20 +139,32 @@
   background: #1a202c;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 
+    0 4px 6px rgba(0, 0, 0, 0.1),
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   border: 1px solid #2d3748;
   flex: 1;
   display: flex;
   flex-direction: column;
+  transition: box-shadow 0.25s ease;
+}
+
+.editor-container:hover {
+  box-shadow: 
+    0 6px 8px rgba(0, 0, 0, 0.15),
+    0 2px 4px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
 }
 
 .editor-header {
-  background: #2d3748;
+  background: linear-gradient(135deg, #2d3748 0%, #374151 100%);
   padding: 0.75rem 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #4a5568;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .editor-title {
@@ -172,6 +219,7 @@
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow-y: auto;
+  transition: all 0.2s ease;
 }
 
 .editor-textarea::placeholder {
@@ -179,15 +227,21 @@
   font-style: italic;
 }
 
+.editor-textarea:focus {
+  background: #1e2a3a;
+  color: #f7fafc;
+}
+
 .editor-textarea:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  background: #161b22;
 }
 
 .generate-btn {
-  background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
-  color: white;
-  border: none;
+  background: #145A92;
+  color: #ffffff;
+  border: 1px solid #1976D2;
   padding: 0.75rem 1.5rem;
   border-radius: 6px;
   font-size: 0.85rem;
@@ -197,27 +251,38 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 2px 4px rgba(20, 90, 146, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
   white-space: nowrap;
   min-width: 140px;
 }
 
 .generate-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-  background: linear-gradient(135deg, #2ea043 0%, #238636 100%);
+  transform: translateY(-2px);
+  background: #1976D2;
+  border-color: #1565C0;
+  box-shadow: 
+    0 6px 12px rgba(20, 90, 146, 0.4),
+    0 2px 4px rgba(20, 90, 146, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.15) inset;
 }
 
 .generate-btn:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translateY(-1px);
+  transition: all 0.1s ease;
 }
 
 .generate-btn:disabled {
   background: #484f58;
+  border-color: #30363d;
   cursor: not-allowed;
   transform: none;
-  box-shadow: none;
+  box-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  opacity: 0.7;
 }
 
 .results {
@@ -227,78 +292,143 @@
   background: #21262d;
   border: 1px solid #30363d;
   border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .result-btn {
   background: #21262d;
   border: 1px solid #30363d;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: #e6edf3;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  white-space: nowrap;
+  min-width: 100px;
 }
 
 .result-btn:hover {
   background: #30363d;
+  transform: translateY(-2px);
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+
+.result-btn:active {
   transform: translateY(-1px);
+  transition: all 0.1s ease;
 }
 
 .result-btn.play {
-  background: #0d4429;
-  border-color: #238636;
-  color: #4ac26b;
+  background: #2E6930;
+  border-color: #388E3C;
+  color: #ffffff;
+}
+
+.result-btn.play:hover {
+  background: #388E3C;
+  border-color: #2E7D32;
+  color: #ffffff;
+  box-shadow: 
+    0 6px 12px rgba(46, 105, 48, 0.4),
+    0 2px 4px rgba(46, 105, 48, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 }
 
 .result-btn.download {
-  background: #0c2d6b;
-  border-color: #1f6feb;
-  color: #58a6ff;
+  background: #995C00;
+  border-color: #F57C00;
+  color: #ffffff;
+}
+
+.result-btn.download:hover {
+  background: #F57C00;
+  border-color: #EF6C00;
+  color: #ffffff;
+  box-shadow: 
+    0 6px 12px rgba(153, 92, 0, 0.4),
+    0 2px 4px rgba(153, 92, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 }
 
 .result-btn.clear {
-  background: #5a1e1e;
-  border-color: #da3633;
-  color: #ff7b72;
+  background: #932921;
+  border-color: #D32F2F;
+  color: #ffffff;
+}
+
+.result-btn.clear:hover {
+  background: #D32F2F;
+  border-color: #C62828;
+  color: #ffffff;
+  box-shadow: 
+    0 6px 12px rgba(147, 41, 33, 0.4),
+    0 2px 4px rgba(147, 41, 33, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 }
 
 .status {
-  padding: 0.75rem;
+  padding: 1rem;
   border-radius: 6px;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   text-align: center;
-  font-family: 'SF Mono', Monaco, monospace;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 500;
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .status.completed {
-  background: #0d4429;
-  color: #4ac26b;
-  border: 1px solid #238636;
+  background: #2E6930;
+  color: #ffffff;
+  border: 1px solid #388E3C;
 }
 
 .status.processing {
-  background: #0c2d6b;
-  color: #58a6ff;
-  border: 1px solid #1f6feb;
+  background: #145A92;
+  color: #ffffff;
+  border: 1px solid #1976D2;
 }
 
 .status.failed {
-  background: #5a1e1e;
-  color: #ff7b72;
-  border: 1px solid #da3633;
+  background: #932921;
+  color: #ffffff;
+  border: 1px solid #D32F2F;
 }
 
 .error {
-  background: #5a1e1e;
-  color: #ff7b72;
-  padding: 0.75rem;
+  background: #932921;
+  color: #ffffff;
+  padding: 1rem;
   border-radius: 6px;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   text-align: center;
-  border: 1px solid #da3633;
-  font-family: 'SF Mono', Monaco, monospace;
+  border: 1px solid #D32F2F;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 500;
+  box-shadow: 
+    0 2px 4px rgba(147, 41, 33, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .footer {
@@ -308,15 +438,20 @@
 .spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid #ffffff40;
+  border: 2px solid rgba(255, 255, 255, 0.3);
   border-top: 2px solid #ffffff;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 1s linear infinite, pulse 2s ease-in-out infinite;
 }
 
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 // GitHub Banner

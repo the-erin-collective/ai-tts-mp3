@@ -157,6 +157,27 @@ export class HomeComponent {
       this.selectedModel.set(models[0]);
     }
   }
+  // Editor functionality methods
+  onTextChange(event: Event) {
+    const target = event.target as HTMLTextAreaElement;
+    this.inputText.set(target.value);
+  }
+
+  getLineCount(): number {
+    const text = this.inputText();
+    if (!text) return 1;
+    return text.split('\n').length;
+  }
+
+  getCharCount(): number {
+    return this.inputText().length;
+  }
+
+  getLineNumbers(): number[] {
+    const lineCount = this.getLineCount();
+    return Array.from({ length: lineCount }, (_, i) => i + 1);
+  }
+  
   private async loadSavedSettings() {
     try {
       const result = await this.ttsService.loadSettings();

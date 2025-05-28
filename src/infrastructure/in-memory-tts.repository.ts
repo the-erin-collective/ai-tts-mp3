@@ -167,10 +167,15 @@ export class InMemoryTTSResultRepository extends TTSResultRepository {
 })
 export class LocalStorageTTSSettingsRepository extends TTSSettingsRepository {
   private readonly SETTINGS_KEY = 'ai-tts-mp3-settings';
-
   async save(settings: TTSSettings): Promise<void> {
     try {
       Logger.info('Saving TTS settings to local storage', { provider: settings.provider });
+      
+      // Check if we're in a browser environment
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+        Logger.info('localStorage not available, skipping save');
+        return;
+      }
       
       // Serialize settings, masking the API key for logging
       const serializedSettings = {
@@ -197,10 +202,15 @@ export class LocalStorageTTSSettingsRepository extends TTSSettingsRepository {
       throw error;
     }
   }
-
   async load(): Promise<TTSSettings | null> {
     try {
       Logger.info('Loading TTS settings from local storage');
+      
+      // Check if we're in a browser environment
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+        Logger.info('localStorage not available, returning null');
+        return null;
+      }
       
       const stored = localStorage.getItem(this.SETTINGS_KEY);
       if (!stored) {
@@ -228,10 +238,16 @@ export class LocalStorageTTSSettingsRepository extends TTSSettingsRepository {
       return null;
     }
   }
-
   async clear(): Promise<void> {
     try {
       Logger.info('Clearing TTS settings from local storage');
+      
+      // Check if we're in a browser environment
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+        Logger.info('localStorage not available, skipping clear');
+        return;
+      }
+      
       localStorage.removeItem(this.SETTINGS_KEY);
       Logger.info('TTS settings cleared from local storage');
     } catch (error) {

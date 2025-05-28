@@ -1,170 +1,95 @@
 <div class="container">
-  <div class="header-card">
-    <h1>{{ title() }}</h1>
-    <p class="subtitle">Convert text to speech using AI providers</p>
+  <!-- GitHub Banner -->
+  <div class="github-banner">
+    <a href="https://github.com/user/ai-tts-mp3" target="_blank" class="github-banner-link">
+      View on GitHub
+    </a>
   </div>
 
-  <!-- Settings Configuration -->
-  <div class="card">
-    <h2>🔧 TTS Settings</h2>
-    
-    <div class="settings-grid">
-      <div class="form-group">
-        <label for="provider">Provider:</label>
-        <select 
-          id="provider" 
-          [(ngModel)]="selectedProvider" 
-          (change)="onProviderChange()"
-          class="form-control">
-          @for (provider of providers; track provider) {
-            <option [value]="provider">{{ provider | titlecase }}</option>
-          }
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="model">Model:</label>
-        <select 
-          id="model" 
-          [(ngModel)]="selectedModel" 
-          class="form-control">
-          @for (model of models(); track model) {
-            <option [value]="model">{{ model }}</option>
-          }
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="voice">Voice:</label>
-        <select 
-          id="voice" 
-          [(ngModel)]="selectedVoice" 
-          class="form-control">
-          @for (voice of voices; track voice) {
-            <option [value]="voice">{{ voice | titlecase }}</option>
-          }
-        </select>
-      </div>
-
-      <div class="form-group full-width">
-        <label for="apiKey">API Key:</label>
-        <input 
-          type="password" 
-          id="apiKey" 
-          [(ngModel)]="apiKey" 
-          placeholder="Enter your API key"
-          class="form-control">
-      </div>
-    </div>
+  <!-- Simple Header -->
+  <div class="header">
+    <h1>🎤 {{ title() }}</h1>
+    <p>Text to MP3 conversion using AI voice APIs</p>
   </div>
 
-  <!-- Text Input -->
-  <div class="card">
-    <h2>📝 Text Input</h2>
-    
-    <div class="form-group">
-      <label for="textInput">Text to convert to speech:</label>
-      <textarea 
-        id="textInput"
-        [(ngModel)]="inputText"
-        rows="4"
-        placeholder="Enter the text you want to convert to speech..."
-        class="form-control textarea"
-        [disabled]="isProcessing()">
-      </textarea>
-    </div>
-
-    <div class="character-count">
-      Characters: {{ inputText().length }} / 4000
-    </div>
-  </div>
-
-  <!-- Generation Controls -->
-  <div class="card">
-    <h2>🎵 Generate Speech</h2>
-    
-    <div class="generation-controls">
+  <!-- Main Form -->
+  <div class="main-form">
+    <!-- Settings Row -->
+    <div class="settings-row">
+      <select [(ngModel)]="selectedProvider" (change)="onProviderChange()" class="input">
+        @for (provider of providers; track provider) {
+          <option [value]="provider">{{ provider | titlecase }}</option>
+        }
+      </select>
+      
+      <select [(ngModel)]="selectedModel" class="input">
+        @for (model of models(); track model) {
+          <option [value]="model">{{ model }}</option>
+        }
+      </select>
+      
+      <select [(ngModel)]="selectedVoice" class="input">
+        @for (voice of voices; track voice) {
+          <option [value]="voice">{{ voice | titlecase }}</option>
+        }
+      </select>
+    </div>    <!-- API Key and Generate Button Row -->
+    <div class="api-generate-row">
+      <input 
+        type="password" 
+        [(ngModel)]="apiKey" 
+        placeholder="API Key"
+        class="input api-key">
+      
       <button 
-        class="btn btn-primary"
+        class="generate-btn"
         (click)="generateSpeech()"
         [disabled]="!canGenerate()">
         @if (isProcessing()) {
           <span class="spinner"></span> Generating...
         } @else {
-          🎤 Generate Speech
+          🚀 Generate Speech
         }
       </button>
-
-      @if (currentResult() && currentResult()?.status === 'completed') {
-        <button class="btn btn-success" (click)="playAudio()">
-          ▶️ Play Audio
-        </button>
-        
-        <button class="btn btn-info" (click)="downloadAudio()">
-          💾 Download MP3
-        </button>
-      }
-
-      @if (currentResult()) {
-        <button class="btn btn-secondary" (click)="clearResult()">
-          🗑️ Clear
-        </button>
-      }
     </div>
 
-    <!-- Status Display -->
+    <!-- Code Editor Style Text Input -->
+    <div class="editor-container">
+      <div class="editor-header">
+        <span class="editor-title">📝 text-to-speech.txt</span>
+        <span class="editor-info">{{ getLineCount() }} lines | {{ getCharCount() }} chars</span>
+      </div>
+      <div class="editor-wrapper">
+        <div class="line-numbers">
+          @for (line of getLineNumbers(); track $index) {
+            <div class="line-number">{{ line }}</div>
+          }
+        </div>        <textarea 
+          [value]="inputText()"
+          (input)="onTextChange($event)"
+          placeholder="Enter text to convert to speech..."
+          class="editor-textarea"
+          [disabled]="isProcessing()"
+          spellcheck="false"></textarea>
+      </div>    </div>
+
+    <!-- Results -->
+    @if (currentResult() && currentResult()?.status === 'completed') {
+      <div class="results">
+        <button class="result-btn play" (click)="playAudio()">▶️ Play</button>
+        <button class="result-btn download" (click)="downloadAudio()">💾 Download</button>
+        <button class="result-btn clear" (click)="clearResult()">🗑️ Clear</button>
+      </div>
+    }
+
+    <!-- Status -->
     @if (statusMessage()) {
-      <div class="status-message" 
-           [class.error]="currentResult()?.status === 'failed'"
-           [class.success]="currentResult()?.status === 'completed'"
-           [class.processing]="isProcessing()">
+      <div class="status" 
+           [class]="currentResult()?.status">
         {{ statusMessage() }}
       </div>
+    }    @if (errorMessage()) {
+      <div class="error">{{ errorMessage() }}</div>
     }
-
-    @if (errorMessage()) {
-      <div class="error-message">
-        ⚠️ {{ errorMessage() }}
-      </div>
-    }
-
-    <!-- Audio Info -->
-    @if (currentResult()?.status === 'completed') {
-      <div class="audio-info">
-        <div class="info-grid">
-          @if (currentResult()?.duration) {
-            <div class="info-item">
-              <strong>Duration:</strong> {{ currentResult()?.duration }}s
-            </div>
-          }
-          @if (currentResult()?.fileSize) {
-            <div class="info-item">
-              <strong>File Size:</strong> {{ (currentResult()?.fileSize! / 1024) | number:'1.1-1' }}KB
-            </div>
-          }
-          @if (currentResult()?.processingTime) {
-            <div class="info-item">
-              <strong>Processing Time:</strong> {{ currentResult()?.processingTime }}ms
-            </div>
-          }
-        </div>
-      </div>
-    }
-  </div>
-
-  <!-- Architecture Info -->
-  <div class="card">
-    <h2>🏗️ Onion Architecture Implementation</h2>
-    <div class="architecture-info">
-      <p>This TTS application demonstrates Onion Architecture with Angular 20:</p>
-      <ol class="layers-list">
-        <li><strong>Domain</strong> - TTS entities, value objects, and business rules</li>
-        <li><strong>Enactment</strong> - TTS application services and use cases</li>
-        <li><strong>Infrastructure</strong> - In-memory repositories and local storage</li>
-        <li><strong>Integration</strong> - Angular service adapters</li>
-        <li><strong>Presentation</strong> - This UI component with Angular 20 signals</li>
-        <li><strong>Common</strong> - Shared utilities and result patterns</li>
-      </ol>
-    </div>
   </div>
 </div>

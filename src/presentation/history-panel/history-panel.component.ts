@@ -2,6 +2,7 @@ import { Component, signal, computed, Output, EventEmitter } from '@angular/core
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HistoryStorageService, HistoryItem, StorageInfo } from '../../infrastructure/history-storage.service';
+import { FileSystemStorageState, FolderReconnectionPrompt } from '../../infrastructure/file-system-storage.service';
 import { TTSResult } from '../../domain/tts.entity';
 
 @Component({
@@ -18,10 +19,15 @@ export class HistoryPanelComponent {  @Output() historyItemSelected = new EventE
   showClearModal = signal(false);
   showDeleteModal = signal(false);
   itemToDelete = signal<HistoryItem | null>(null);
-  
-  // Data
+    // Data
   history = signal<HistoryItem[]>([]);
-  storageInfo = signal<StorageInfo>({ used: 0, available: 0, total: 0, usedPercentage: 0, itemCount: 0 });
+  storageInfo = signal<StorageInfo>({ used: 0, available: 0, total: 0, usedPercentage: 0, itemCount: 0 });  fileSystemState = signal<FileSystemStorageState>({ 
+    isSupported: false, 
+    isEnabled: false, 
+    directoryHandle: null, 
+    selectedPath: null 
+  });
+  folderReconnectionPrompt = signal<FolderReconnectionPrompt | null>(null);
 
   // Computed properties
   filteredHistory = computed(() => {
@@ -41,11 +47,36 @@ export class HistoryPanelComponent {  @Output() historyItemSelected = new EventE
     if (percentage > 0.8) return 'warning';
     return 'normal';
   });
-
   storageDisplayPercentage = computed(() => {
     return Math.round(this.storageInfo().usedPercentage * 100);
   });
 
+  // File system storage computed properties
+  showStorageBar = computed(() => {
+    return !this.fileSystemState().isEnabled;
+  });
+
+  showFolderPath = computed(() => {
+    return this.fileSystemState().isEnabled && this.fileSystemState().selectedPath;
+  });  lockIconSrc = computed(() => {
+    return this.fileSystemState().isEnabled 
+      ? 'assets/icons/outline/archive.svg'  // Unlocked/open storage
+      : 'assets/icons/outline/bookmark.svg'; // Locked/limited storage
+  });
+
+  lockIconTooltip = computed(() => {
+    const state = this.fileSystemState();
+    if (!state.isSupported) {
+      return 'File System Access API not supported in this browser';
+    }
+    return state.isEnabled 
+      ? 'Disable unlimited file system storage'
+      : 'Enable unlimited file system storage';
+  });
+
+  canClickLock = computed(() => {
+    return this.fileSystemState().isSupported;
+  });
   constructor(private historyService: HistoryStorageService) {
     // Subscribe to history changes
     this.historyService.history$.subscribe(history => {
@@ -55,6 +86,14 @@ export class HistoryPanelComponent {  @Output() historyItemSelected = new EventE
     // Subscribe to storage info changes
     this.historyService.storageInfo$.subscribe(storageInfo => {
       this.storageInfo.set(storageInfo);
+    });    // Subscribe to file system state changes
+    this.historyService.fileSystemState$.subscribe(state => {
+      this.fileSystemState.set(state);
+    });
+
+    // Subscribe to folder reconnection prompts
+    this.historyService.folderReconnectionPrompt$.subscribe(prompt => {
+      this.folderReconnectionPrompt.set(prompt);
     });
   }
 
@@ -94,9 +133,39 @@ export class HistoryPanelComponent {  @Output() historyItemSelected = new EventE
     this.selectedItemId.set(null);
     this.showClearModal.set(false);
   }
-
   cancelClearAll(): void {
     this.showClearModal.set(false);
+  }
+
+  // File system storage methods
+  async toggleFileSystemStorage(): Promise<void> {
+    const state = this.fileSystemState();
+    
+    if (!state.isSupported) return;
+
+    try {
+      if (state.isEnabled) {
+        await this.historyService.disableFileSystemStorage();
+      } else {
+        await this.historyService.enableFileSystemStorage();
+      }
+    } catch (error) {
+      console.error('Failed to toggle file system storage:', error);
+    }
+  }
+
+  // Folder reconnection methods
+  async reconnectToFolder(): Promise<void> {
+    await this.historyService.handleFolderReconnection(true);
+  }
+
+  async declineReconnection(): Promise<void> {
+    await this.historyService.handleFolderReconnection(false);
+  }
+
+  // Change folder method
+  async changeFolder(): Promise<void> {
+    await this.historyService.enableFileSystemStorage();
   }
 
   // Panel control methods removed - panel is always open

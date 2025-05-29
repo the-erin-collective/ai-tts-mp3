@@ -15,33 +15,68 @@
         History
         <span class="item-count">({{ storageInfo().itemCount }})</span>
       </h3>
-    </div>
+    </div>    <!-- Storage Indicator -->
+    @if (showStorageBar()) {
+      <div class="storage-info" [class]="storageWarningLevel()">
+        <div class="storage-header">
+          <div class="storage-title">
+            <span>Storage</span>
+            <button 
+              class="storage-lock-btn"
+              [class.clickable]="canClickLock()"
+              [class.disabled]="!canClickLock()"
+              [title]="lockIconTooltip()"
+              (click)="canClickLock() && toggleFileSystemStorage()">
+              <img [src]="lockIconSrc()" width="14" height="14" class="lock-icon">
+            </button>
+          </div>
+        </div>
+        <div class="storage-bar">
+          <div 
+            class="storage-fill" 
+            [style.width.%]="storageDisplayPercentage()">
+          </div>
+        </div>
+        <div class="storage-text">
+          <span class="storage-percentage">{{ storageDisplayPercentage() }}%</span>
+          <span class="storage-details">{{ formatFileSize(storageInfo().used) }} / {{ formatFileSize(storageInfo().total) }}</span>
+        </div>
+        @if (storageWarningLevel() === 'warning') {
+          <div class="storage-warning">
+            <img src="assets/icons/outline/alert-triangle.svg" width="16" height="16" class="inline-icon">
+            Storage approaching limit
+          </div>
+        }
+        @if (storageWarningLevel() === 'critical') {
+          <div class="storage-warning critical">
+            <img src="assets/icons/outline/alert-circle.svg" width="16" height="16" class="inline-icon">
+            Storage critically full
+          </div>
+        }
+      </div>
+    }
 
-    <!-- Storage Indicator -->
-    <div class="storage-info" [class]="storageWarningLevel()">
-      <div class="storage-bar">
-        <div 
-          class="storage-fill" 
-          [style.width.%]="storageDisplayPercentage()">
+    @if (showFolderPath()) {
+      <div class="folder-storage-info">
+        <div class="storage-header">
+          <div class="storage-title">
+            <span>Unlimited Storage</span>
+            <button 
+              class="storage-lock-btn clickable"
+              [title]="lockIconTooltip()"
+              (click)="toggleFileSystemStorage()">
+              <img [src]="lockIconSrc()" width="14" height="14" class="lock-icon">
+            </button>
+          </div>
+        </div>        <div class="folder-path" (click)="changeFolder()" title="Click to change folder">
+          <img src="assets/icons/outline/folder-down.svg" width="16" height="16" class="inline-icon">
+          <span class="folder-name">{{ fileSystemState().selectedPath }}</span>
+        </div>
+        <div class="storage-text">
+          <span class="item-count-text">{{ storageInfo().itemCount }} items stored</span>
         </div>
       </div>
-      <div class="storage-text">
-        <span class="storage-percentage">{{ storageDisplayPercentage() }}%</span>
-        <span class="storage-details">{{ formatFileSize(storageInfo().used) }} / {{ formatFileSize(storageInfo().total) }}</span>
-      </div>
-      @if (storageWarningLevel() === 'warning') {
-        <div class="storage-warning">
-          <img src="assets/icons/outline/alert-triangle.svg" width="16" height="16" class="inline-icon">
-          Storage approaching limit
-        </div>
-      }
-      @if (storageWarningLevel() === 'critical') {
-        <div class="storage-warning critical">
-          <img src="assets/icons/outline/alert-circle.svg" width="16" height="16" class="inline-icon">
-          Storage critically full
-        </div>
-      }
-    </div>
+    }
 
     <!-- Search -->
     <div class="search-container">
@@ -244,6 +279,43 @@
           <button class="modal-btn danger" (click)="confirmDeleteItem()">
             <img src="assets/icons/outline/trash.svg" width="16" height="16" class="inline-icon">
             Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+  <!-- Folder Reconnection Modal -->
+  @if (folderReconnectionPrompt()) {
+    <div class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Reconnect to Previous Folder</h3>
+          <button class="modal-close-btn" (click)="declineReconnection()">
+            <img src="assets/icons/outline/x.svg" width="20" height="20">
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-icon">
+            <img src="assets/icons/outline/folder-down.svg" width="48" height="48" style="filter: invert(58%) sepia(65%) saturate(3530%) hue-rotate(201deg) brightness(96%) contrast(85%);">
+          </div>
+          <p>You previously enabled unlimited storage using this folder:</p>
+          <div class="folder-info">
+            <img src="assets/icons/outline/folder-down.svg" width="20" height="20" class="inline-icon">
+            <span class="folder-name">{{ folderReconnectionPrompt()!.previousPath }}</span>
+          </div>
+          <p>Would you like to reconnect to this folder to access your saved history?</p>
+        </div>
+        <div class="modal-footer">
+          <button 
+            class="modal-btn secondary" 
+            (click)="declineReconnection()">
+            No, use local storage
+          </button>
+          <button 
+            class="modal-btn primary" 
+            (click)="reconnectToFolder()">
+            <img src="assets/icons/outline/folder-down.svg" width="16" height="16" class="inline-icon">
+            Yes, reconnect to folder
           </button>
         </div>
       </div>

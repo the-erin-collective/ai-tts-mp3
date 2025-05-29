@@ -75,7 +75,7 @@
 }
 
 // Storage Indicator - moved up since header actions were removed
-.storage-info {
+.storage-info, .folder-storage-info {
   margin-bottom: 1rem;
   padding: 0.75rem;
   background: #161b22;
@@ -92,6 +92,80 @@
 .storage-info.critical {
   border-color: #f85149;
   background: rgba(248, 81, 73, 0.1);
+}
+
+.folder-storage-info {
+  border-color: #238636;
+  background: rgba(35, 134, 54, 0.1);
+}
+
+.storage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.storage-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #e6edf3;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.storage-lock-btn {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.storage-lock-btn.clickable {
+  cursor: pointer;
+  color: #7d8590;
+}
+
+.storage-lock-btn.clickable:hover {
+  background: #21262d;
+  color: #e6edf3;
+}
+
+.storage-lock-btn.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  color: #484f58;
+}
+
+.lock-icon {
+  transition: all 0.2s ease;
+}
+
+.folder-path {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 4px;
+}
+
+.folder-name {
+  color: #e6edf3;
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.item-count-text {
+  color: #7d8590;
+  font-size: 0.75rem;
 }
 
 .storage-bar {
@@ -597,6 +671,33 @@
   box-shadow: 0 4px 8px rgba(218, 54, 51, 0.3);
 }
 
+.modal-btn.primary {
+  background: #238636;
+  color: white;
+}
+
+.modal-btn.primary:hover {
+  background: #2ea043;
+}
+
+// Folder info styles for modals
+.folder-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: #161b22;
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  margin: 1rem 0;
+}
+
+.folder-name {
+  color: #e6edf3;
+  font-weight: 500;
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+
 // Footer Styles
 .history-footer {
   background: #161b22;
@@ -694,6 +795,6 @@
   
   .social-link {
     width: 28px;
-    height: 28px;
+  height: 28px;
   }
 }

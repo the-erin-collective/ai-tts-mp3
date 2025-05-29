@@ -5,8 +5,6 @@ import {
   TTSSettings, 
   QueryId, 
   TTSResultStatus,
-  ModelProvider,
-  Voice,
   ApiKey
 } from '../domain/tts.entity';
 import { 
@@ -43,7 +41,7 @@ export class InMemoryTTSQueryRepository extends TTSQueryRepository {
     return query;
   }
 
-  async findRecent(limit: number = 10): Promise<TTSQuery[]> {
+  async findRecent(limit = 10): Promise<TTSQuery[]> {
     Logger.info('Fetching recent TTS queries', { limit, totalCount: this.queries.length });
     return [...this.queries]
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())

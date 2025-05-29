@@ -1,6 +1,6 @@
 // History Storage Service - Manages TTS history with localStorage and File System Access API
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { Observable } from 'rxjs';
 import { TTSResult, TTSSettings } from '../domain/tts.entity';
 import { FileSystemStorageService, FileSystemStorageState, FolderReconnectionPrompt } from './file-system-storage.service';
 
@@ -62,7 +62,7 @@ export class HistoryStorageService {
     return this.fileSystemStorage.getFileSystemState();
   }
   // File system storage methods
-  async enableFileSystemStorage(isReconnection: boolean = false): Promise<{ success: boolean; error?: string }> {
+  async enableFileSystemStorage(isReconnection = false): Promise<{ success: boolean; error?: string }> {
     return this.fileSystemStorage.enableFileSystemStorage(isReconnection);
   }
 

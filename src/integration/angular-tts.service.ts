@@ -12,7 +12,8 @@ import {
   InMemoryTTSResultRepository, 
   LocalStorageTTSSettingsRepository 
 } from '../infrastructure/in-memory-tts.repository';
-import { TTSSettings, TTSQuery, TTSResult } from '../domain/tts.entity';
+import { OpenAITTSProviderService } from '../infrastructure/openai-tts-provider.service';
+import { TTSSettings, TTSResult } from '../domain/tts.entity';
 
 // Integration layer - Dependency Injection configuration
 @Injectable({
@@ -20,19 +21,20 @@ import { TTSSettings, TTSQuery, TTSResult } from '../domain/tts.entity';
 })
 export class TTSServiceFactory {
   private static ttsApplicationService: TTSApplicationService | null = null;
-
   static createTTSApplicationService(): TTSApplicationService {
     if (!this.ttsApplicationService) {
       const queryRepository: TTSQueryRepository = new InMemoryTTSQueryRepository();
       const resultRepository: TTSResultRepository = new InMemoryTTSResultRepository();
       const settingsRepository: TTSSettingsRepository = new LocalStorageTTSSettingsRepository();
       const domainService = new TTSDomainService(queryRepository, resultRepository);
+      const ttsProvider = new OpenAITTSProviderService();
       
       this.ttsApplicationService = new TTSApplicationService(
         queryRepository,
         resultRepository,
         settingsRepository,
-        domainService
+        domainService,
+        ttsProvider
       );
     }
     return this.ttsApplicationService;
@@ -108,7 +110,6 @@ export class AngularTTSService {
     const blob = new Blob([result.audioData], { type: 'audio/mpeg' });
     return URL.createObjectURL(blob);
   }
-
   async playAudio(result: TTSResult): Promise<HTMLAudioElement | null> {
     const audioUrl = await this.downloadAudio(result);
     if (!audioUrl) {
@@ -117,5 +118,14 @@ export class AngularTTSService {
 
     const audio = new Audio(audioUrl);
     return audio;
+  }
+
+  // Cost estimation
+  estimateCost(textLength: number, model = 'tts-1'): number {
+    // OpenAI TTS pricing (as of 2024):
+    // tts-1: $0.015 per 1K characters
+    // tts-1-hd: $0.030 per 1K characters
+    const pricePerThousandChars = model === 'tts-1-hd' ? 0.030 : 0.015;
+    return (textLength / 1000) * pricePerThousandChars;
   }
 }

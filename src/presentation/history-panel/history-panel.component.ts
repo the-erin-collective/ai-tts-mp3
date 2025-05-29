@@ -1,9 +1,7 @@
 import { Component, signal, computed, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HistoryStorageService, HistoryItem, StorageInfo } from '../../infrastructure/history-storage.service';
-import { FileSystemStorageState, FolderReconnectionPrompt } from '../../infrastructure/file-system-storage.service';
-import { TTSResult } from '../../domain/tts.entity';
+import { IntegratedHistoryStorageService, HistoryItem, StorageInfo, FileSystemStorageState, FolderReconnectionPrompt } from '../../integration/history-storage.service';
 
 @Component({
   selector: 'app-history-panel',
@@ -77,7 +75,7 @@ export class HistoryPanelComponent {  @Output() historyItemSelected = new EventE
   canClickLock = computed(() => {
     return this.fileSystemState().isSupported;
   });
-  constructor(private historyService: HistoryStorageService) {
+  constructor(private historyService: IntegratedHistoryStorageService) {
     // Subscribe to history changes
     this.historyService.history$.subscribe(history => {
       this.history.set(history);
@@ -212,7 +210,7 @@ export class HistoryPanelComponent {  @Output() historyItemSelected = new EventE
     }
   }  getVoiceIcon(voice: string): string {
     // For OpenAI voices, use actual icon names
-    const openAIVoiceIcons: { [key: string]: string } = {
+    const openAIVoiceIcons: Record<string, string> = {
       'alloy': 'ghost-3',      
       'echo': 'moon',          
       'fable': 'clover',       

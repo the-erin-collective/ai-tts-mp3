@@ -2,7 +2,24 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { HistoryItem, StorageInfo } from './history-storage.service';
-import { TTSResult, TTSSettings } from '../domain/tts.entity';
+import { TTSResult, TTSSettings, QueryId, TTSResultStatus } from '../domain/tts.entity';
+
+// Polyfill interface for Window with showDirectoryPicker
+interface WindowWithDirectoryPicker extends Window {
+  showDirectoryPicker: (options?: DirectoryPickerOptions) => Promise<FileSystemDirectoryHandle>;
+}
+
+// Polyfill for DirectoryPickerOptions if not present
+interface DirectoryPickerOptions {
+  mode?: 'read' | 'readwrite';
+  startIn?: string;
+}
+
+// Polyfill for FileSystemDirectoryHandle.entries()
+interface DirectoryHandleWithEntries extends FileSystemDirectoryHandle {
+  entries(): AsyncIterableIterator<[string, FileSystemHandle]>;
+
+}
 
 export interface FileSystemStorageState {
   isSupported: boolean;
@@ -124,14 +141,14 @@ export class FileSystemStorageService {
     return 'showDirectoryPicker' in window && 'FileSystemDirectoryHandle' in window;
   }
   // Enable file system storage by selecting a directory
-  async enableFileSystemStorage(isReconnection: boolean = false): Promise<{ success: boolean; error?: string }> {
+  async enableFileSystemStorage(isReconnection = false): Promise<{ success: boolean; error?: string }> {
     if (!this.isFileSystemAccessSupported()) {
       return { success: false, error: 'File System Access API not supported in this browser' };
     }
 
     try {      // Prepare directory picker options
       const previousFolderState = this.getPreviousFolderState();
-      const pickerOptions: any = {
+      const pickerOptions: DirectoryPickerOptions = {
         mode: 'readwrite',
         startIn: 'documents'
       };
@@ -142,19 +159,17 @@ export class FileSystemStorageService {
         // Note: File System Access API doesn't support direct navigation to specific paths
         // but we'll use 'documents' as a sensible starting point for most use cases
         pickerOptions.startIn = 'documents';
-      }
-
-      // Show directory picker
-      const directoryHandle = await (window as any).showDirectoryPicker(pickerOptions);
+      }      // Show directory picker
+      const handle = await (window as unknown as WindowWithDirectoryPicker).showDirectoryPicker(pickerOptions);
 
       // Test write permissions by attempting to create a test file
       try {
-        const testHandle = await directoryHandle.getFileHandle('tts-permission-test.tmp', { create: true });
-        await directoryHandle.removeEntry('tts-permission-test.tmp');
-      } catch (permissionError) {
+        await handle.getFileHandle('tts-permission-test.tmp', { create: true });
+        await handle.removeEntry('tts-permission-test.tmp');
+      } catch {
         return { 
           success: false, 
-          error: 'Write permission denied for selected folder. Please choose a folder you have write access to.' 
+          error: 'Write permission denied for selected folder. Please choose a folder you have write access to.'
         };
       }
 
@@ -163,8 +178,8 @@ export class FileSystemStorageService {
       const newState: FileSystemStorageState = {
         ...state,
         isEnabled: true,
-        directoryHandle,
-        selectedPath: directoryHandle.name
+        directoryHandle: handle,
+        selectedPath: handle.name
       };
 
       this.fileSystemStateSubject.next(newState);
@@ -259,10 +274,8 @@ export class FileSystemStorageService {
       if (newItemSizeMB > this.MAX_STORAGE_MB) {
         warnings.push(`Item too large (${newItemSizeMB.toFixed(1)}MB). Maximum allowed is ${this.MAX_STORAGE_MB}MB.`);
         return { success: false, warnings };
-      }
-
-      // Remove old items if needed
-      let workingHistory = [...currentHistory];
+      }      // Remove old items if needed
+      const workingHistory = [...currentHistory];
       let currentUsage = this.calculateStorageInfo().used;
 
       while (currentUsage + audioSize > this.MAX_STORAGE_MB * 1024 * 1024 && workingHistory.length > 0) {
@@ -318,9 +331,9 @@ export class FileSystemStorageService {
   async clearHistory(): Promise<boolean> {
     try {
       const state = this.getFileSystemState();
-        if (state.isEnabled && state.directoryHandle) {
-        // Clear all files in the directory
-        for await (const [name, handle] of (state.directoryHandle as any).entries()) {
+        if (state.isEnabled && state.directoryHandle) {        // Clear all files in the directory
+        // Use type assertion to access entries() method
+        for await (const [name, handle] of (state.directoryHandle as DirectoryHandleWithEntries).entries()) {
           if (handle.kind === 'file') {
             await state.directoryHandle.removeEntry(name);
           }
@@ -471,7 +484,6 @@ export class FileSystemStorageService {
       }
     }
   }
-
   private async loadFromLocalStorage(): Promise<void> {
     if (typeof localStorage === 'undefined') return;
 
@@ -481,12 +493,37 @@ export class FileSystemStorageService {
       return;
     }
 
-    const parsed = JSON.parse(stored);
-    const history = parsed.map((item: any) => ({
+    const parsed = JSON.parse(stored);    interface SerializedHistoryItem {
+      id: string;
+      text: string;
+      settings: TTSSettings;
+      result: {
+        queryId: string;
+        status: string;
+        audioData?: number[];
+        createdAt: string;
+        updatedAt: string;
+        duration?: number;
+        fileSize?: number;
+        error?: {
+          code: string;
+          message: string;
+          details?: unknown;
+        };
+        processingTime?: number;
+        [key: string]: unknown;
+      };
+      createdAt: string;
+      audioSize: number;
+      metadata?: { title?: string; tags?: string[]; duration?: number };
+    }
+    const history = (parsed as SerializedHistoryItem[]).map((item) => ({
       ...item,
       createdAt: new Date(item.createdAt),
       result: {
         ...item.result,
+        queryId: new QueryId(item.result.queryId),
+        status: item.result.status as TTSResultStatus,
         createdAt: new Date(item.result.createdAt),
         updatedAt: new Date(item.result.updatedAt),
         audioData: item.result.audioData ? new Uint8Array(Object.values(item.result.audioData)) : undefined
@@ -506,9 +543,7 @@ export class FileSystemStorageService {
     } catch (error) {
       console.warn(`Failed to delete audio file for item ${itemId}:`, error);
     }
-  }
-
-  private async migrateFromLocalStorage(): Promise<void> {
+  }  private async migrateFromLocalStorage(): Promise<void> {
     // Load from localStorage and save to file system
     if (typeof localStorage === 'undefined') return;
 
@@ -517,11 +552,35 @@ export class FileSystemStorageService {
 
     try {
       const parsed = JSON.parse(stored);
-      const history = parsed.map((item: any) => ({
+      interface SerializedHistoryItem {
+        id: string;
+        text: string;
+        settings: TTSSettings;
+        result: {
+          queryId: string;
+          status: string;
+          audioData?: number[];
+          createdAt: string;
+          updatedAt: string;
+          duration?: number;
+          fileSize?: number;
+          error?: {
+            code: string;
+            message: string;
+            details?: unknown;
+          };
+          processingTime?: number;
+          [key: string]: unknown;
+        };
+        createdAt: string;
+        audioSize: number;        metadata?: { title?: string; tags?: string[]; duration?: number };
+      }      const history = (parsed as SerializedHistoryItem[]).map((item) => ({
         ...item,
         createdAt: new Date(item.createdAt),
         result: {
           ...item.result,
+          queryId: new QueryId(item.result.queryId),
+          status: item.result.status as TTSResultStatus,
           createdAt: new Date(item.result.createdAt),
           updatedAt: new Date(item.result.updatedAt),
           audioData: item.result.audioData ? new Uint8Array(Object.values(item.result.audioData)) : undefined

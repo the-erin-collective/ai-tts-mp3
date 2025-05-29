@@ -134,7 +134,7 @@ export class OpenAITTSService {
     }
   }
 
-  estimateCost(textLength: number, model: string = 'tts-1'): number {
+  estimateCost(textLength: number, model = 'tts-1'): number {
     // OpenAI TTS pricing (as of 2024):
     // tts-1: $0.015 per 1K characters
     // tts-1-hd: $0.030 per 1K characters

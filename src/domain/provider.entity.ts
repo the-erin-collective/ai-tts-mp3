@@ -1,5 +1,5 @@
 
-import { ModelProvider, Voice } from './tts.entity';
+import { ModelProvider } from './tts.entity';
 
 // Provider-specific configuration interfaces
 export interface OpenAIConfig {

@@ -21,7 +21,7 @@ export class AudioMetadata {
     private readonly quality: AudioQuality,
     private readonly sampleRate: number,
     private readonly bitRate: number,
-    private readonly channels: number = 1 // Mono by default for TTS
+    private readonly channels = 1 // Mono by default for TTS
   ) {
     if (sampleRate <= 0) {
       throw new Error('Sample rate must be positive');
@@ -64,7 +64,7 @@ export class AudioChunk {
   constructor(
     private readonly data: Uint8Array,
     private readonly sequenceNumber: number,
-    private readonly isLast: boolean = false
+    private readonly isLast = false
   ) {
     if (data.length === 0) {
       throw new Error('Audio chunk cannot be empty');

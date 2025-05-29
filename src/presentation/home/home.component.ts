@@ -2,18 +2,16 @@ import { Component, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AngularTTSService } from '../../integration/angular-tts.service';
-import { HistoryStorageService, HistoryItem } from '../../infrastructure/history-storage.service';
+import { IntegratedHistoryStorageService, HistoryItem } from '../../integration/history-storage.service';
 import { HistoryPanelComponent } from '../history-panel/history-panel.component';
-import { OpenAITTSService } from '../../infrastructure/openai-tts.service';
 import { 
   TTSSettings, 
   ModelProvider, 
   Voice, 
   ApiKey, 
   TTSResult, 
-  TTSResultStatus,
-  QueryText
-} from '../../domain/tts.entity';
+  TTSResultStatus
+} from '../../integration/domain-types';
 
 @Component({
   selector: 'app-home',
@@ -29,7 +27,8 @@ export class HomeComponent {
   isProcessing = signal(false);
   currentResult = signal<TTSResult | null>(null);
   errorMessage = signal('');
-    // Settings state
+
+  // Settings state
   selectedProvider = signal<ModelProvider>(ModelProvider.OPENAI);
   selectedModel = signal('tts-1');
   selectedVoice = signal<Voice>(Voice.ALLOY);
@@ -50,7 +49,7 @@ export class HomeComponent {
 
   // Computed properties
   canGenerate = computed(() => {
-    return this.inputText().trim().length > 0 && 
+    return this.inputText().trim().length > 0 &&
            this.apiKey().trim().length > 0 && 
            !this.isProcessing();
   });
@@ -76,6 +75,7 @@ export class HomeComponent {
   });
 
   storageWarning = computed(() => this.storageWarningState());
+
   // Token counting and cost estimation
   tokenCount = computed(() => {
     const text = this.inputText();
@@ -93,9 +93,9 @@ export class HomeComponent {
     const selectedModel = this.selectedModel();
     const provider = this.selectedProvider();
     
-    // Use OpenAI pricing for accurate cost estimation
+    // Use TTS service for cost estimation
     if (provider === ModelProvider.OPENAI) {
-      const cost = this.openaiService.estimateCost(characterCount, selectedModel);
+      const cost = this.ttsService.estimateCost(characterCount, selectedModel);
       return cost.toFixed(4);
     }
     
@@ -117,13 +117,15 @@ export class HomeComponent {
         return ['default'];
     }
   });
+
   constructor(
     private ttsService: AngularTTSService,
-    private historyService: HistoryStorageService,
-    private openaiService: OpenAITTSService
+    private historyService: IntegratedHistoryStorageService
   ) {
     this.loadSavedSettings();
-  }async generateSpeech() {
+  }
+
+  async generateSpeech() {
     if (!this.canGenerate()) return;
 
     try {
@@ -132,13 +134,6 @@ export class HomeComponent {
       this.storageWarningState.set(null);
       // Auto-clear previous results when starting new generation
       this.currentResult.set(null);
-
-      const settings: TTSSettings = {
-        provider: this.selectedProvider(),
-        model: this.selectedModel(),
-        voice: this.selectedVoice(),
-        apiKey: new ApiKey(this.apiKey())
-      };
 
       // Check storage before generation if saving to history
       if (this.saveToHistory()) {
@@ -180,7 +175,7 @@ export class HomeComponent {
       if (audio) {
         await audio.play();
       }
-    } catch (error) {
+    } catch {
       this.errorMessage.set('Failed to play audio');
     }
   }
@@ -200,7 +195,7 @@ export class HomeComponent {
         document.body.removeChild(link);
         URL.revokeObjectURL(audioUrl);
       }
-    } catch (error) {
+    } catch {
       this.errorMessage.set('Failed to download audio');
     }
   }
@@ -217,6 +212,7 @@ export class HomeComponent {
       this.selectedModel.set(models[0]);
     }
   }
+
   // Editor functionality methods
   onTextChange(event: Event) {
     const target = event.target as HTMLTextAreaElement;
@@ -237,7 +233,8 @@ export class HomeComponent {
     const lineCount = this.getLineCount();
     return Array.from({ length: lineCount }, (_, i) => i + 1);
   }
-    private async loadSavedSettings() {
+
+  private async loadSavedSettings() {
     try {
       const result = await this.ttsService.loadSettings();
       if (result.isSuccess()) {

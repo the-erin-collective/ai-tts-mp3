@@ -147,7 +147,7 @@ export interface TTSResult {
   readonly error?: {
     readonly code: string;
     readonly message: string;
-    readonly details?: any;
+    readonly details?: unknown;
   };
   readonly processingTime?: number; // Time taken in milliseconds
 }

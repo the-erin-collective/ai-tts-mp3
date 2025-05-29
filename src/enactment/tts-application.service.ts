@@ -5,8 +5,7 @@ import {
   TTSSettings, 
   QueryId, 
   QueryText, 
-  TTSResultStatus,
-  ApiKey 
+  TTSResultStatus
 } from '../domain/tts.entity';
 import { 
   TTSQueryRepository, 
@@ -14,23 +13,20 @@ import {
   TTSSettingsRepository, 
   TTSDomainService 
 } from '../domain/tts.repository';
-import { ProviderConfig, ProviderError, ProviderErrorType } from '../domain/provider.entity';
-import { AudioMetadata, AudioFormat, AudioQuality } from '../domain/audio.entity';
+import { ProviderError } from '../domain/provider.entity';
 import { Result } from '../common/result';
 import { Logger } from '../common/utils';
-import { OpenAITTSService } from '../infrastructure/openai-tts.service';
+import { TTSProviderService } from '../domain/tts-provider.interface';
 
 // Application Service for TTS operations
 export class TTSApplicationService {
-  private readonly openAITTS: OpenAITTSService;
-
   constructor(
     private readonly queryRepository: TTSQueryRepository,
     private readonly resultRepository: TTSResultRepository,
     private readonly settingsRepository: TTSSettingsRepository,
-    private readonly domainService: TTSDomainService
+    private readonly domainService: TTSDomainService,
+    private readonly ttsProvider: TTSProviderService
   ) {
-    this.openAITTS = new OpenAITTSService();
   }
 
   async createTTSQuery(
@@ -111,11 +107,9 @@ export class TTSApplicationService {
 
       // Generate speech using OpenAI TTS API
       let audioData: Uint8Array;
-      let duration: number;
-
-      if (query.settings.provider === 'openai') {
+      let duration: number;        if (query.settings.provider === 'openai') {
         try {
-          audioData = await this.openAITTS.generateSpeech(query.text, query.settings);
+          audioData = await this.ttsProvider.generateSpeech(query.text.getValue(), query.settings);
           duration = this.estimateDuration(query.text.getValue());
         } catch (error) {
           Logger.error('OpenAI TTS API failed', error as Error, { queryId });
@@ -180,7 +174,7 @@ export class TTSApplicationService {
     }
   }
 
-  async getRecentQueries(limit: number = 10): Promise<Result<TTSQuery[], string>> {
+  async getRecentQueries(limit = 10): Promise<Result<TTSQuery[], string>> {
     try {
       Logger.info('Fetching recent queries', { limit });
       const queries = await this.queryRepository.findRecent(limit);

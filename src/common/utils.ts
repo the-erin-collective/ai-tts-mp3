@@ -1,15 +1,15 @@
 // Common utilities that can be used across all layers
 
 export class Logger {
-  static info(message: string, ...args: any[]): void {
+  static info(message: string, ...args: unknown[]): void {
     console.log(`[INFO] ${new Date().toISOString()}: ${message}`, ...args);
   }
 
-  static warn(message: string, ...args: any[]): void {
+  static warn(message: string, ...args: unknown[]): void {
     console.warn(`[WARN] ${new Date().toISOString()}: ${message}`, ...args);
   }
 
-  static error(message: string, error?: Error, ...args: any[]): void {
+  static error(message: string, error?: Error, ...args: unknown[]): void {
     console.error(`[ERROR] ${new Date().toISOString()}: ${message}`, error, ...args);
   }
 }
@@ -32,8 +32,7 @@ export class DateTimeUtil {
       minute: '2-digit'
     });
   }
-
-  static isValidDate(date: any): boolean {
+  static isValidDate(date: unknown): boolean {
     return date instanceof Date && !isNaN(date.getTime());
   }
 }

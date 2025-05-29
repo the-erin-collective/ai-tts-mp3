@@ -95,7 +95,7 @@
           </select>
           
           <select [(ngModel)]="selectedVoice" class="input">
-            @for (voice of voices; track voice) {
+            @for (voice of voices(); track voice) {
               <option [value]="voice">{{ voice | titlecase }}</option>
             }
           </select>
@@ -154,7 +154,7 @@
               <img src="assets/icons/outline/file-text.svg" width="16" height="16" class="inline-icon" alt="File">
               text-to-speech.txt
             </span>
-            <span class="editor-info">{{ getLineCount() }} lines | {{ getCharCount() }} chars | {{ tokenCount() }} tks | ${{ estimatedCost() }}</span>
+            <span class="editor-info">{{ getLineCount() }} lines | {{ getCharCount() }} chars | {{ tokenCount() }} tks | {{ estimatedCost() }}</span>
           </div>
           <div class="editor-wrapper">
             <div class="line-numbers">

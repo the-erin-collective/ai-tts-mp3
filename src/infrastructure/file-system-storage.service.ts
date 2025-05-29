@@ -1,8 +1,9 @@
 // File System Storage Service - Enhanced storage using File System Access API
-import { Injectable } from '@angular/core';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { HistoryItem, StorageInfo } from './history-storage.service';
-import { TTSResult, TTSSettings, QueryId, TTSResultStatus } from '../domain/tts.entity';
+import { TTSResult, TTSSettings, QueryId, TTSResultStatus, ModelProvider } from '../domain/tts.entity';
 
 // Polyfill interface for Window with showDirectoryPicker
 interface WindowWithDirectoryPicker extends Window {
@@ -52,8 +53,15 @@ export class FileSystemStorageService {
   private historySubject = new BehaviorSubject<HistoryItem[]>([]);
   private storageInfoSubject = new BehaviorSubject<StorageInfo>(this.calculateStorageInfo());
   private folderReconnectionSubject = new BehaviorSubject<FolderReconnectionPrompt | null>(null);
-  constructor() {
+  constructor(
+    @Inject(PLATFORM_ID) private platformId: Object
+  ) {
     this.initializeService();
+  }
+
+  /** true only when running in a browser (not during SSR) */
+  private get isBrowser(): boolean {
+    return isPlatformBrowser(this.platformId);
   }
 
   // Observables
@@ -142,11 +150,12 @@ export class FileSystemStorageService {
   }
   // Enable file system storage by selecting a directory
   async enableFileSystemStorage(isReconnection = false): Promise<{ success: boolean; error?: string }> {
-    if (!this.isFileSystemAccessSupported()) {
-      return { success: false, error: 'File System Access API not supported in this browser' };
-    }
+    try {
+      // Clear existing history before switching storage modes
+      this.historySubject.next([]);
+      this.updateStorageInfo();
 
-    try {      // Prepare directory picker options
+      // Prepare directory picker options
       const previousFolderState = this.getPreviousFolderState();
       const pickerOptions: DirectoryPickerOptions = {
         mode: 'readwrite',
@@ -156,10 +165,10 @@ export class FileSystemStorageService {
       // If reconnecting and we have a previous folder path, try to help user find it
       if (isReconnection && previousFolderState?.selectedPath) {
         console.log(`Suggesting reconnection to previous folder: ${previousFolderState.selectedPath}`);
-        // Note: File System Access API doesn't support direct navigation to specific paths
-        // but we'll use 'documents' as a sensible starting point for most use cases
         pickerOptions.startIn = 'documents';
-      }      // Show directory picker
+      }
+      
+      // Show directory picker
       const handle = await (window as unknown as WindowWithDirectoryPicker).showDirectoryPicker(pickerOptions);
 
       // Test write permissions by attempting to create a test file
@@ -184,25 +193,40 @@ export class FileSystemStorageService {
 
       this.fileSystemStateSubject.next(newState);
       await this.saveStorageState();
-      this.saveFolderState(); // Save persistent folder state      // Handle history loading based on context
-      if (isReconnection) {
-        // For reconnection, load existing history from the selected folder
-        console.log('Reconnection mode: Loading existing history from file system');
-        await this.loadFromFileSystem();
-      } else {
-        // For new setup, migrate existing localStorage history to file system
-        console.log('New setup mode: Migrating localStorage history to file system');
-        await this.migrateFromLocalStorage();
+      this.saveFolderState();
+
+      try {
+        // First try to load existing history from the selected folder
+        console.log('Loading existing history from file system');
+        const fileSystemHistory = await this.loadFromFileSystem();
+        this.historySubject.next(fileSystemHistory);
+        this.updateStorageInfo();
+
+        if (!isReconnection && fileSystemHistory.length === 0) {
+          // If this is a new folder and it's empty, try to migrate localStorage history
+          console.log('New empty folder selected, attempting to migrate localStorage history');
+          await this.migrateFromLocalStorage();
+        }
+      } catch (error) {
+        console.error('Failed to load/migrate history:', error);
+        // Keep history empty on error
+        this.historySubject.next([]);
+        this.updateStorageInfo();
       }
 
       console.log('File system storage enabled successfully');
       return { success: true };
-    } catch (error) {
-      console.error('Failed to enable file system storage:', error);
+    } catch (error: any) {
+      // Reset state on error
+      this.historySubject.next([]);
+      this.updateStorageInfo();
       
-      // Handle specific error types
+      console.error('Failed to enable file system storage:', error);
+        // Handle specific error types
       if (error instanceof DOMException) {
         if (error.name === 'AbortError') {
+          // User cancelled folder selection, reload the previous history
+          await this.loadHistory();
           return { success: false, error: 'Folder selection was cancelled' };
         } else if (error.name === 'NotAllowedError') {
           return { success: false, error: 'Permission denied to access file system' };
@@ -221,21 +245,28 @@ export class FileSystemStorageService {
   // Disable file system storage and fall back to localStorage
   async disableFileSystemStorage(): Promise<boolean> {
     try {
+      // Clear existing history first
+      this.historySubject.next([]);
+      this.updateStorageInfo();
+
       const state = this.fileSystemStateSubject.value;
       const newState: FileSystemStorageState = {
         ...state,
         isEnabled: false,
         directoryHandle: null,
-        selectedPath: null
-      };      this.fileSystemStateSubject.next(newState);
+        selectedPath: null,
+      };
+      
+      this.fileSystemStateSubject.next(newState);
       await this.clearStorageState();
-      this.clearPreviousFolderState(); // Clear persistent folder state
+      this.clearPreviousFolderState();
 
-      // Migrate back to localStorage
-      await this.migrateToLocalStorage();
-
+      // Load history from localStorage
+      console.log('Loading history from local storage after disabling file system storage');
+      await this.loadHistory();
+      
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to disable file system storage:', error);
       return false;
     }
@@ -253,14 +284,26 @@ export class FileSystemStorageService {
     }
 
     const audioSize = result.audioData.byteLength;
-    const item: HistoryItem = {
-      id: `${Date.now()}-${Math.random().toString(36).substring(2)}`,
-      text,
-      settings,
-      result,
+    const itemId = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
+
+    // Create the history item
+    const historyItem: HistoryItem = {
+      id: itemId,
+      text: text,
+      settings: {
+        ...settings,
+        apiKey: undefined, // Remove the API key before saving
+      },
+      result: {
+        queryId: result.queryId,
+        status: result.status,
+        audioData: result.audioData,
+        createdAt: result.createdAt,
+        updatedAt: result.updatedAt,
+      },
       createdAt: new Date(),
-      audioSize,
-      metadata
+      audioSize: result.audioData.length,
+      metadata: metadata,
     };
 
     const currentHistory = this.getHistory();
@@ -286,7 +329,7 @@ export class FileSystemStorageService {
     }
 
     // Add new item
-    const newHistory = [item, ...currentHistory.filter(h => !removedItems.some(r => r.id === h.id))];
+    const newHistory = [historyItem, ...currentHistory.filter(h => !removedItems.some(r => r.id === h.id))];
 
     try {
       await this.saveHistory(newHistory);
@@ -357,11 +400,10 @@ export class FileSystemStorageService {
   // Private methods for file system operations
   private async saveHistory(history: HistoryItem[]): Promise<void> {
     const state = this.getFileSystemState();
-
     if (state.isEnabled && state.directoryHandle) {
       await this.saveToFileSystem(history);
     } else {
-      await this.saveToLocalStorage(history);
+      this.saveToLocalStorage(history);
     }
   }
 
@@ -400,37 +442,53 @@ export class FileSystemStorageService {
     }
   }
 
-  private async saveToLocalStorage(history: HistoryItem[]): Promise<void> {
-    if (typeof localStorage === 'undefined') return;
+  private saveToLocalStorage(history: HistoryItem[]): void {
+    if (!this.isBrowser) return;
 
-    const serializable = history.map(item => ({
-      ...item,
-      result: {
-        ...item.result,
-        audioData: item.result.audioData ? Array.from(item.result.audioData) : undefined
-      }
+    const key = this.STORAGE_KEY;
+    const serializable = history.map(item => ({      id:        item.id,
+      text:      item.text,
+      settings:  { ...item.settings, apiKey: undefined },  // Don't store API key
+      queryId:   item.result.queryId.toString(),     // ← use toString()
+      status:    item.result.status,
+      audioData: Array.from(item.result.audioData!),
+      timestamp: item.result.createdAt.toISOString(),
+      title:     item.metadata?.title ?? null,
     }));
-
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(serializable));
+    console.debug('[TTS] saving history to localStorage:', serializable);
+    localStorage.setItem(key, JSON.stringify(serializable));
   }
 
   private async loadHistory(): Promise<void> {
-    try {
-      const state = this.getFileSystemState();
+    // Clear existing history first
+    this.historySubject.next([]);
+    this.updateStorageInfo();
 
-      if (state.isEnabled && state.directoryHandle) {
-        await this.loadFromFileSystem();
-      } else {
-        await this.loadFromLocalStorage();
-      }
-    } catch (error) {
-      console.error('Failed to load history:', error);
-      this.historySubject.next([]);
-    }
-  }
-  private async loadFromFileSystem(): Promise<void> {
     const state = this.getFileSystemState();
-    if (!state.directoryHandle) return;
+
+    if (state.isEnabled && state.directoryHandle) {
+      // Load from file system
+      try {
+        console.log('Loading history from file system storage');
+        const fileSystemHistory = await this.loadFromFileSystem();
+        this.historySubject.next(fileSystemHistory);
+        console.debug('[TTS] loaded history from file system:', fileSystemHistory);
+        this.updateStorageInfo();
+        return;
+      } catch (error) {
+        console.error('[TTS] error loading history from file system:', error);
+        // Keep history empty on file system error
+        return;
+      }
+    }
+
+    // Load from localStorage if file system is not enabled
+    console.log('Loading history from local storage');
+    this.loadFromLocalStorage();
+  }
+  private async loadFromFileSystem(): Promise<HistoryItem[]> {
+    const state = this.getFileSystemState();
+    if (!state.directoryHandle) return []; // Return empty array if no directory handle
 
     try {
       console.log('Loading history from file system...');
@@ -470,67 +528,65 @@ export class FileSystemStorageService {
       }
 
       console.log(`Successfully loaded ${history.length} items from file system`);
-      this.historySubject.next(history);
       this.updateStorageInfo(); // Update storage info after loading
+      return history; // Return the loaded history
     } catch (error) {
       if (error instanceof DOMException && error.name === 'NotFoundError') {
         // No history file exists yet
         console.log('No history metadata file found, starting with empty history');
-        this.historySubject.next([]);
         this.updateStorageInfo();
+        return []; // Return empty array if no history file
       } else {
         console.error('Error loading from file system:', error);
         throw error;
       }
     }
   }
-  private async loadFromLocalStorage(): Promise<void> {
-    if (typeof localStorage === 'undefined') return;
-
-    const stored = localStorage.getItem(this.STORAGE_KEY);
-    if (!stored) {
+  private loadFromLocalStorage(): void {
+    if (!this.isBrowser) {
+      console.info('[TTS] SSR: skipping localStorage history load');
       this.historySubject.next([]);
+      this.updateStorageInfo();
       return;
     }
 
-    const parsed = JSON.parse(stored);    interface SerializedHistoryItem {
-      id: string;
-      text: string;
-      settings: TTSSettings;
-      result: {
-        queryId: string;
-        status: string;
-        audioData?: number[];
-        createdAt: string;
-        updatedAt: string;
-        duration?: number;
-        fileSize?: number;
-        error?: {
-          code: string;
-          message: string;
-          details?: unknown;
-        };
-        processingTime?: number;
-        [key: string]: unknown;
-      };
-      createdAt: string;
-      audioSize: number;
-      metadata?: { title?: string; tags?: string[]; duration?: number };
+    const raw = localStorage.getItem(this.STORAGE_KEY);
+    if (!raw) {
+      this.historySubject.next([]);
+      this.updateStorageInfo();
+      return;
     }
-    const history = (parsed as SerializedHistoryItem[]).map((item) => ({
-      ...item,
-      createdAt: new Date(item.createdAt),
-      result: {
-        ...item.result,
-        queryId: new QueryId(item.result.queryId),
-        status: item.result.status as TTSResultStatus,
-        createdAt: new Date(item.result.createdAt),
-        updatedAt: new Date(item.result.updatedAt),
-        audioData: item.result.audioData ? new Uint8Array(Object.values(item.result.audioData)) : undefined
-      }
+
+    let parsed: any[];
+    try {
+      parsed = JSON.parse(raw);
+      console.debug('[TTS] loaded history from localStorage:', parsed);
+    } catch {
+      console.error('[TTS] corrupt localStorage, clearing history');
+      localStorage.removeItem(this.STORAGE_KEY);
+      this.historySubject.next([]);
+      this.updateStorageInfo();
+      return;
+    }
+
+    const items: HistoryItem[] = parsed.map(r => ({
+      id:        r.id,
+      text:      r.text,
+      settings:  r.settings as TTSSettings,          // ← restore full settings
+      result:    {
+        queryId:   new QueryId(r.queryId),
+        status:    r.status as TTSResultStatus,
+        audioData: Uint8Array.from(r.audioData),
+        createdAt: new Date(r.timestamp),
+        updatedAt: new Date(r.timestamp),
+      },
+      createdAt: new Date(r.timestamp),
+      audioSize: r.audioData.length,
+      metadata:  { title: r.title },
     }));
 
-    this.historySubject.next(history);
+    this.historySubject.next(items);
+    this.updateStorageInfo();
   }
 
   private async deleteAudioFile(itemId: string): Promise<void> {

@@ -12,6 +12,7 @@ import {
   TTSResult, 
   TTSResultStatus
 } from '../../integration/domain-types';
+import { PROVIDER_FLAGS } from '../../domain/provider-flags';
 
 @Component({
   selector: 'app-home',
@@ -87,25 +88,42 @@ export class HomeComponent {
 
   estimatedCost = computed(() => {
     const text = this.inputText();
-    if (!text.trim()) return '0.0000';
-    
+    if (!text.trim()) return '~$0.00000 est.';
     const characterCount = text.length;
     const selectedModel = this.selectedModel();
     const provider = this.selectedProvider();
-    
-    // Use TTS service for cost estimation
+    let cost: number;
     if (provider === ModelProvider.OPENAI) {
-      const cost = this.ttsService.estimateCost(characterCount, selectedModel);
-      return cost.toFixed(4);
+      cost = this.ttsService.estimateCost(characterCount, selectedModel);
+    } else {
+      cost = characterCount * 0.000015;
     }
-    
-    // Fallback estimation for other providers
-    return (characterCount * 0.000015).toFixed(4);
+    // Always show 5 decimal places, no duplicate $
+    return `~$${Number(cost).toFixed(5)} est.`;
   });
 
   // Available options for dropdowns
-  providers = Object.values(ModelProvider);
-  voices = Object.values(Voice);
+  providers = Object.values(ModelProvider).filter(p => PROVIDER_FLAGS[p as ModelProvider]);
+
+  openAIVoices = [
+    'nova', 'shimmer', 'echo', 'onyx', 'fable', 'alloy', 'ash', 'sage', 'coral'
+  ];
+
+  elevenLabsVoices = [
+    // Add valid ElevenLabs voices here when ready
+    'rachel', 'drew', 'clyde'
+  ];
+
+  voices = computed(() => {
+    switch (this.selectedProvider()) {
+      case ModelProvider.OPENAI:
+        return this.openAIVoices;
+      case ModelProvider.ELEVENLABS:
+        return this.elevenLabsVoices;
+      default:
+        return [];
+    }
+  });
   
   models = computed(() => {
     switch (this.selectedProvider()) {
@@ -243,7 +261,9 @@ export class HomeComponent {
           this.selectedProvider.set(settings.provider);
           this.selectedModel.set(settings.model);
           this.selectedVoice.set(settings.voice as Voice);
-          this.apiKey.set(settings.apiKey.getValue());
+          if (settings.apiKey) {
+            this.apiKey.set(settings.apiKey.getValue());
+          }
         }
       }
     } catch (error) {
@@ -259,7 +279,9 @@ export class HomeComponent {
     this.selectedProvider.set(item.settings.provider);
     this.selectedModel.set(item.settings.model);
     this.selectedVoice.set(item.settings.voice as Voice);
-    this.apiKey.set(item.settings.apiKey.getValue());
+    if (item.settings.apiKey) {
+      this.apiKey.set(item.settings.apiKey.getValue());
+    }
     this.currentResult.set(item.result);
     
     if (item.metadata?.title) {

@@ -41,6 +41,7 @@
   background: #161b22;
   border-bottom: 1px solid #21262d;
   padding: 1rem;
+  padding-bottom: 7px; // Reduced bottom padding
   position: sticky;
   top: 0;
   z-index: 10;
@@ -50,7 +51,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem; // Reduced to help fix the gap
 }
 
 .panel-title {
@@ -221,11 +222,14 @@
 // Search
 .search-container {
   position: relative;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem; // Reduced from 0.75rem
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 .search-input {
-  width: 100%;
+  flex: 1;
   padding: 0.5rem;
   background: #0d1117;
   border: 1px solid #21262d;
@@ -247,7 +251,7 @@
 
 .clear-search-btn {
   position: absolute;
-  right: 0.5rem;
+  right: calc(44px + 0.5rem); // Width of clear all button + gap
   top: 50%;
   transform: translateY(-50%);
   background: none;
@@ -266,8 +270,9 @@
 
 // Clear All Button
 .clear-all-btn {
-  width: 100%;
+  min-width: 44px;
   padding: 0.5rem;
+  height: 32px; // Match height with search input
   background: #21262d;
   border: 1px solid #30363d;
   color: #e6edf3;
@@ -278,18 +283,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-}
-
-.clear-all-btn:hover {
-  background: #da3633;
-  border-color: #f85149;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  &:hover {
+    background: rgba(218, 54, 51, 0.15); // Dimmer red background
+    border-color: var(--error-color);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(218, 54, 51, 0.2); // Reduced shadow opacity
+  }
 }
 
 // Content Area
 .history-content {
   flex: 1;
   overflow-y: auto;
+  padding-top: 0; // Remove top padding to fix gap
 }
 
 // Empty State
@@ -325,6 +333,7 @@
 // History List
 .history-list {
   padding: 0.5rem;
+  margin-top: -2px; // Negative margin to compensate for the remaining gap
 }
 
 // History Item
@@ -661,14 +670,17 @@
 }
 
 .modal-btn.danger {
-  background: #da3633;
-  color: #ffffff;
+  background: #21262d;
+  border: 1px solid var(--error-color);
+  color: #e6edf3;
 }
 
 .modal-btn.danger:hover {
-  background: #b92d2b;
+  background: rgba(218, 54, 51, 0.3); // Increased opacity for brighter but not full red
+  border-color: var(--error-color);
+  color: #e6edf3;
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(218, 54, 51, 0.3);
+  box-shadow: 0 2px 4px rgba(218, 54, 51, 0.2);
 }
 
 .modal-btn.primary {
@@ -700,101 +712,102 @@
 
 // Footer Styles
 .history-footer {
-  background: #161b22;
+  width: 100%;
+  background: #0d1117;
   border-top: 1px solid #21262d;
-  padding: 0.75rem 1rem;
-  margin-top: auto; // Push to bottom
-  flex-shrink: 0; // Prevent shrinking
+  padding: 0.75rem 5px 0.5rem 5px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.95rem;
+  color: #e6edf3;
 }
 
 .footer-content {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 1rem;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 350px;
+  gap: 0;
 }
 
-.license-info {
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.footer-by {
+  margin-right: 0.4rem;
+  color: #7d8590;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  font-size: 0.8rem;
+  cursor: default;
+}
+
+.social-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0.1rem;
+  color: #e6edf3;
+  background: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0;
+  transition: color 0.2s, filter 0.2s;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.social-link img {
+  display: block;
+  width: 18px;
+  height: 18px;
+  filter: grayscale(1) brightness(0.5) invert(0.6) sepia(0) !important; /* dimmer, matches #7d8590 */
+  transition: filter 0.2s;
+  background: none !important;
+  border-radius: 0 !important;
+}
+
+.social-link:hover img,
+.social-link:focus img {
+  filter: grayscale(0) brightness(1.5) invert(1) sepia(0) !important; /* pure white */
+}
+
+.footer-divider {
+  display: inline-block;
+  width: 1px;
+  height: 24px;
+  background: #30363d;
+  margin: 0 1rem;
+  vertical-align: middle;
+}
+
+.footer-right {
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding-right: 5px;
+  /* Center the license text in the right half */
 }
 
 .license-text {
   color: #7d8590;
-  font-size: 0.75rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  text-align: center;
+  width: 100%;
+  margin: 0 6px 0 0px;
+  display: block;
   font-weight: 400;
+  cursor: default;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.social-links {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.social-link {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  background: #21262d;
-  border: 1px solid #30363d;
-  color: #7d8590;
-  text-decoration: none;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.social-link:hover {
-  background: #30363d;
-  border-color: #484f58;
-  color: #e6edf3;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.social-link img {
-  width: 16px;
-  height: 16px;
-  margin: 0; // Override inline-icon margin
-  transition: filter 0.2s ease;
-}
-
-// Specific hover colors for social platforms
-.social-link[href*="youtube.com"]:hover img {
-  filter: invert(17%) sepia(83%) saturate(6230%) hue-rotate(345deg) brightness(85%) contrast(88%); // Red for YouTube
-}
-
-.social-link[href*="github.com"]:hover img {
-  filter: invert(100%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(100%) contrast(100%); // White for GitHub
-}
-
-.social-link[href*="ko-fi.com"]:hover img {
-  filter: invert(27%) sepia(51%) saturate(2000%) hue-rotate(146deg) brightness(94%) contrast(85%); // Cyan/Green for Ko-fi
-}
-
-.social-link[href*="bsky.app"]:hover img {
-  filter: invert(27%) sepia(51%) saturate(2000%) hue-rotate(215deg) brightness(94%) contrast(85%); // Blue for Bluesky
-}
-
-// Responsive adjustments for footer
-@media (max-width: 768px) {
-  .footer-content {
-    flex-direction: column;
-    gap: 0.5rem;
-    text-align: center;
-  }
-  
-  .license-text {
-    font-size: 0.7rem;
-  }
-  
-  .social-links {
-    gap: 0.375rem;
-  }
-  
-  .social-link {
-    width: 28px;
-  height: 28px;
-  }
-}
+//# sourceMappingURL=history-panel.css.map

@@ -165,6 +165,7 @@ export class InMemoryTTSResultRepository extends TTSResultRepository {
 })
 export class LocalStorageTTSSettingsRepository extends TTSSettingsRepository {
   private readonly SETTINGS_KEY = 'ai-tts-mp3-settings';
+
   async save(settings: TTSSettings): Promise<void> {
     try {
       Logger.info('Saving TTS settings to local storage', { provider: settings.provider });
@@ -175,22 +176,12 @@ export class LocalStorageTTSSettingsRepository extends TTSSettingsRepository {
         return;
       }
       
-      // Serialize settings, masking the API key for logging
-      const serializedSettings = {
+      // Serialize settings for storage
+      const storageData = {
         provider: settings.provider,
         model: settings.model,
         voice: settings.voice,
-        apiKey: settings.apiKey.getMasked(), // Store full key but log masked
-        speed: settings.speed,
-        pitch: settings.pitch,
-        stability: settings.stability,
-        similarityBoost: settings.similarityBoost
-      };
-
-      // Store the actual API key value (not masked) in localStorage
-      const storageData = {
-        ...serializedSettings,
-        apiKey: settings.apiKey.getValue()
+        apiKey: settings.apiKey?.getValue() // Store actual API key value if present
       };
 
       localStorage.setItem(this.SETTINGS_KEY, JSON.stringify(storageData));
@@ -200,6 +191,7 @@ export class LocalStorageTTSSettingsRepository extends TTSSettingsRepository {
       throw error;
     }
   }
+
   async load(): Promise<TTSSettings | null> {
     try {
       Logger.info('Loading TTS settings from local storage');
@@ -217,16 +209,11 @@ export class LocalStorageTTSSettingsRepository extends TTSSettingsRepository {
       }
 
       const data = JSON.parse(stored);
-      
       const settings: TTSSettings = {
         provider: data.provider,
         model: data.model,
         voice: data.voice,
-        apiKey: new ApiKey(data.apiKey),
-        speed: data.speed,
-        pitch: data.pitch,
-        stability: data.stability,
-        similarityBoost: data.similarityBoost
+        apiKey: data.apiKey ? new ApiKey(data.apiKey) : undefined
       };
 
       Logger.info('TTS settings loaded from local storage', { provider: settings.provider });
@@ -236,6 +223,7 @@ export class LocalStorageTTSSettingsRepository extends TTSSettingsRepository {
       return null;
     }
   }
+
   async clear(): Promise<void> {
     try {
       Logger.info('Clearing TTS settings from local storage');

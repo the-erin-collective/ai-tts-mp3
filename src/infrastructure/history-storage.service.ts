@@ -1,5 +1,5 @@
 // History Storage Service - Manages TTS history with localStorage and File System Access API
-import { Injectable } from '@angular/core';
+import { Injectable, PLATFORM_ID } from '@angular/core';
 import { Observable } from 'rxjs';
 import { TTSResult, TTSSettings } from '../domain/tts.entity';
 import { FileSystemStorageService, FileSystemStorageState, FolderReconnectionPrompt } from './file-system-storage.service';

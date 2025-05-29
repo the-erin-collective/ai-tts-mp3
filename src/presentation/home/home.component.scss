@@ -755,14 +755,14 @@
   font-weight: 500;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   pointer-events: auto;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .github-banner-link:hover {
-  background: #2e394e;
-  transform: rotate(45deg) scale(1.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  background: #3d4b66;
+  color: #e6edf3;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
 }
 
 @media (max-width: 768px) {
@@ -845,4 +845,10 @@
   vertical-align: middle;
   margin-right: 0.5rem;
   opacity: 0.9;
+}
+
+// Social links (if any other than GitHub)
+.social-link:hover {
+  color: #fff !important;
+  background: none !important;
 }

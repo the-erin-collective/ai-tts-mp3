@@ -88,24 +88,24 @@
         placeholder="Search history..."
         [(ngModel)]="searchQuery"
         [value]="searchQuery()">
-      @if (searchQuery()) {        <button 
+      @if (searchQuery()) {
+        <button 
           class="clear-search-btn" 
           (click)="searchQuery.set('')"
           title="Clear search">
           <img src="assets/icons/outline/x.svg" width="14" height="14" alt="Clear search">
         </button>
       }
+      @if (history().length > 0) {
+        <button 
+          class="clear-all-btn" 
+          (click)="clearAllHistory()"
+          title="Clear all history">
+          <img src="assets/icons/outline/trash.svg" width="16" height="16" class="inline-icon" alt="Trash">
+          All
+        </button>
+      }
     </div>
-
-    <!-- Clear All Button -->
-    @if (history().length > 0) {      <button 
-        class="clear-all-btn" 
-        (click)="clearAllHistory()"
-        title="Clear all history">
-        <img src="assets/icons/outline/trash.svg" width="16" height="16" class="inline-icon" alt="Trash">
-        Clear All
-      </button>
-    }
   </div>
 
   <!-- History List -->
@@ -201,10 +201,9 @@
   <!-- Footer -->
   <div class="history-footer">
     <div class="footer-content">
-      <div class="license-info">
-        <span class="license-text">Licensed under AGPL v3</span>
-      </div>
-      <div class="social-links">        <a href="https://www.youtube.com/@solarpunkdev" target="_blank" title="YouTube" class="social-link">
+      <div class="footer-left">
+        <span class="footer-by">by:</span>
+        <a href="https://www.youtube.com/@solarpunkdev" target="_blank" title="YouTube" class="social-link">
           <img src="assets/icons/outline/brand-youtube.svg" width="18" height="18" class="inline-icon" alt="YouTube">
         </a>
         <a href="https://github.com/the-erin-collective" target="_blank" title="GitHub" class="social-link">
@@ -216,6 +215,10 @@
         <a href="https://bsky.app/profile/solarpunk-dev.bsky.social" target="_blank" title="Bluesky" class="social-link">
           <img src="assets/icons/outline/butterfly.svg" width="18" height="18" class="inline-icon" alt="Bluesky">
         </a>
+      </div>
+      <span class="footer-divider"></span>
+      <div class="footer-right">
+        <span class="license-text">Licensed under AGPL v3</span>
       </div>
     </div>
   </div>

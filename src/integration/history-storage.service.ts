@@ -1,5 +1,5 @@
 // Integration layer wrapper for history storage
-import { Injectable } from '@angular/core';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { 
   HistoryStorageService as InfraHistoryStorage, 
   HistoryItem, 
@@ -18,9 +18,9 @@ import { TTSSettings, TTSResult } from '../domain/tts.entity';
 export class IntegratedHistoryStorageService {
   private readonly historyStorage: InfraHistoryStorage;
 
-  constructor() {
+  constructor(@Inject(PLATFORM_ID) private platformId: Object) {
     // Infrastructure service requires FileSystemStorageService as dependency
-    const fileSystemStorage = new FileSystemStorageService();
+    const fileSystemStorage = new FileSystemStorageService(this.platformId);
     this.historyStorage = new InfraHistoryStorage(fileSystemStorage);
   }
 

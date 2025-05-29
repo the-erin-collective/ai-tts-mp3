@@ -106,13 +106,9 @@ export class QueryId {
 // Domain Entities
 export interface TTSSettings {
   readonly provider: ModelProvider;
-  readonly model: string; // Union of OpenAIModel | ElevenLabsModel | string for extensibility
-  readonly voice: Voice | string; // Allow custom voices
-  readonly apiKey: ApiKey;
-  readonly speed?: number; // 0.25 to 4.0 for OpenAI
-  readonly pitch?: number; // Provider-specific
-  readonly stability?: number; // ElevenLabs specific
-  readonly similarityBoost?: number; // ElevenLabs specific
+  readonly model: string;
+  readonly voice: string;
+  readonly apiKey?: ApiKey; // Make apiKey optional
 }
 
 export interface TTSQuery {

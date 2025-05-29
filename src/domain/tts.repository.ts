@@ -43,23 +43,7 @@ export class TTSDomainService {
 
     if (!settings.voice) {
       throw new Error('Voice is required');
-    }
-
-    // Provider-specific validations
-    if (settings.provider === ModelProvider.OPENAI) {
-      if (settings.speed && (settings.speed < 0.25 || settings.speed > 4.0)) {
-        throw new Error('OpenAI speed must be between 0.25 and 4.0');
-      }
-    }
-
-    if (settings.provider === ModelProvider.ELEVENLABS) {
-      if (settings.stability && (settings.stability < 0 || settings.stability > 1)) {
-        throw new Error('ElevenLabs stability must be between 0 and 1');
-      }
-      if (settings.similarityBoost && (settings.similarityBoost < 0 || settings.similarityBoost > 1)) {
-        throw new Error('ElevenLabs similarity boost must be between 0 and 1');
-      }
-    }
+    }    // Provider-specific validations can be added here when needed
   }
 
   async estimateCost(query: TTSQuery): Promise<number> {

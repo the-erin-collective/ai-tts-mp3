@@ -30,7 +30,9 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci      - name: Build Angular app for static deployment
+        run: npm ci
+
+      - name: Build Angular app for static deployment
         run: npm run build:github-pages
         env:
           NODE_OPTIONS: "--max_old_space_size=4096"

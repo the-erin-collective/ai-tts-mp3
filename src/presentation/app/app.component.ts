@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, Inject, PLATFORM_ID } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { isPlatformBrowser } from '@angular/common';
 
 @Component({
   selector: 'app-root',
@@ -9,5 +10,10 @@ import { RouterOutlet } from '@angular/router';
   styleUrl: './app.component.scss'
 })
 export class AppComponent {
-  title = 'AI-TTS-MP3 App';
+  title = 'AI-TTS-MP3';
+  constructor(@Inject(PLATFORM_ID) platformId: Object) {
+    if (isPlatformBrowser(platformId)) {
+      document.title = 'AI-TTS-MP3';
+    }
+  }
 }

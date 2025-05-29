@@ -36,20 +36,17 @@ export class OpenAITTSService {
           ModelProvider.OPENAI,
           'OpenAI API key is required'
         );
-      }
-
-      const request: OpenAITTSRequest = {
+      }      const request: OpenAITTSRequest = {
         model: settings.model || 'tts-1',
-        input: text.getValue(),
+        input: ` ${text.getValue()} `, // Pad with space before and after
         voice: settings.voice || 'alloy',
-        response_format: 'mp3',
-        speed: settings.speed || 1.0
+        response_format: 'mp3'
       };
 
       const response = await fetch(this.baseUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${settings.apiKey.getValue()}`,
+          'Authorization': `Bearer ${settings.apiKey?.getValue() ?? ''}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(request)

@@ -217,6 +217,9 @@ export class HistoryPanelComponent {  @Output() historyItemSelected = new EventE
       'onyx': 'carambola',     
       'nova': 'flower',        
       'shimmer': 'sunglasses',      
+      'coral': 'seedling',     // Use seedling for coral
+      'ash': 'ghost-3',        // fallback for new voices
+      'sage': 'ghost-3',       // fallback for new voices
       'rachel': 'ghost-3',     
       'drew': 'moon',          
       'clyde': 'clover'        

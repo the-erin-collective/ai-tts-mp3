@@ -1,10 +1,13 @@
 {
   "name": "ai-tts-mp3",
-  "version": "1.0.0",
-  "scripts": {
+  "version": "1.0.0",  "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:static": "ng build --configuration production",
+    "build:github-pages": "ng build --configuration production --base-href /ai-tts-mp3/",
+    "build:spa": "ng build --configuration spa",
+    "build:ssr": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "lint": "ng lint"

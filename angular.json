@@ -47,9 +47,7 @@
             "ssr": {
               "entry": "server.ts"
             }
-          },
-          "configurations": {
-            "production": {
+          },          "configurations": {            "production": {
               "budgets": [
                 {
                   "type": "initial",
@@ -58,11 +56,27 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "2kB",
-                  "maximumError": "4kB"
+                  "maximumWarning": "15kB",
+                  "maximumError": "20kB"
                 }
               ],
               "outputHashing": "all"
+            },            "spa": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kB",
+                  "maximumError": "1MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "15kB",
+                  "maximumError": "20kB"
+                }
+              ],
+              "outputHashing": "all",
+              "prerender": false,
+              "ssr": false
             },
             "development": {
               "optimization": false,

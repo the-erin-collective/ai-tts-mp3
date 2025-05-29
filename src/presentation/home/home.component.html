@@ -1,95 +1,202 @@
-<div class="container">
-  <!-- GitHub Banner -->
-  <div class="github-banner">
-    <a href="https://github.com/user/ai-tts-mp3" target="_blank" class="github-banner-link">
-      View on GitHub
-    </a>
-  </div>
+<!-- Home Component with History Panel Layout -->
+<div class="app-layout">  <!-- History Panel -->
+  @if (showHistoryPanel()) {
+    <app-history-panel 
+      (historyItemSelected)="onHistoryItemSelected($event)">
+    </app-history-panel>
+  }
 
-  <!-- Simple Header -->
-  <div class="header">
-    <h1>🎤 {{ title() }}</h1>
-    <p>Text to MP3 conversion using AI voice APIs</p>
-  </div>
+  <!-- Main Content Area -->
+  <div class="main-content" [class.with-history]="showHistoryPanel()">
+    <div class="container">
+      <!-- GitHub Banner -->
+      <div class="github-banner">
+        <a href="https://github.com/user/ai-tts-mp3" target="_blank" class="github-banner-link">
+          View on GitHub
+        </a>
+      </div>      <!-- Header -->
+      <div class="header">
+        <!-- Storage Warning Banner -->
+        @if (storageWarning()) {
+          <div class="storage-warning-banner" [class]="storageWarning()?.level">
+            <div class="warning-content">              <span class="warning-icon">
+                <tabler-icon name="alert-triangle" [size]="20" [color]="storageWarning()?.level === 'critical' ? '#dc3545' : '#fd7e14'"></tabler-icon>
+              </span><span class="warning-message">{{ storageWarning()?.message }}</span>
+              @if (storageWarning() && storageWarning()!.itemsToRemove && storageWarning()!.itemsToRemove!.length > 0) {
+                <button 
+                  class="warning-action-btn" 
+                  (click)="showRemovalPreview = true">
+                  View Items to Remove
+                </button>
+              }              <button 
+                class="warning-close-btn" 
+                (click)="dismissStorageWarning()"
+                title="Dismiss">
+                <tabler-icon name="x" [size]="16"></tabler-icon>
+              </button>
+            </div>
+          </div>
+        }
 
-  <!-- Main Form -->
-  <div class="main-form">
-    <!-- Settings Row -->
-    <div class="settings-row">
-      <select [(ngModel)]="selectedProvider" (change)="onProviderChange()" class="input">
-        @for (provider of providers; track provider) {
-          <option [value]="provider">{{ provider | titlecase }}</option>
+        <!-- Removal Preview Modal -->
+        @if (showRemovalPreview && storageWarning()?.itemsToRemove) {
+          <div class="removal-preview-modal">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h3>Items to be Removed</h3>                <button 
+                  class="modal-close-btn" 
+                  (click)="showRemovalPreview = false">
+                  <tabler-icon name="x" [size]="16"></tabler-icon>
+                </button>
+              </div>
+              <div class="modal-body">
+                <p>The following items will be automatically removed to make space:</p>
+                <div class="items-to-remove">
+                  @for (item of storageWarning()!.itemsToRemove; track item.id) {
+                    <div class="removal-item">
+                      <div class="item-text">{{ truncateText(item.text, 60) }}</div>
+                      <div class="item-details">
+                        {{ formatDate(item.createdAt) }} • {{ formatFileSize(item.audioSize) }}
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+              <div class="modal-actions">
+                <button 
+                  class="modal-btn cancel" 
+                  (click)="cancelGeneration()">
+                  Cancel Generation
+                </button>
+                <button 
+                  class="modal-btn proceed" 
+                  (click)="proceedWithGeneration()">
+                  Proceed Anyway
+                </button>
+              </div>
+            </div>
+          </div>
         }
-      </select>
-      
-      <select [(ngModel)]="selectedModel" class="input">
-        @for (model of models(); track model) {
-          <option [value]="model">{{ model }}</option>
+      </div>
+
+      <!-- Main Form -->
+      <div class="main-form">
+        <!-- Settings Row -->
+        <div class="settings-row">
+          <select [(ngModel)]="selectedProvider" (change)="onProviderChange()" class="input">
+            @for (provider of providers; track provider) {
+              <option [value]="provider">{{ provider | titlecase }}</option>
+            }
+          </select>
+          
+          <select [(ngModel)]="selectedModel" class="input">
+            @for (model of models(); track model) {
+              <option [value]="model">{{ model }}</option>
+            }
+          </select>
+          
+          <select [(ngModel)]="selectedVoice" class="input">
+            @for (voice of voices; track voice) {
+              <option [value]="voice">{{ voice | titlecase }}</option>
+            }
+          </select>
+        </div>
+
+        <!-- API Key and Generate Button Row -->
+        <div class="api-generate-row">
+          <input 
+            type="password" 
+            [(ngModel)]="apiKey" 
+            placeholder="API Key"
+            class="input api-key">
+          
+          <button 
+            class="generate-btn"
+            (click)="generateSpeech()"
+            [disabled]="!canGenerate()">            @if (isProcessing()) {
+              <span class="spinner"></span> Generating...
+            } @else {
+              <tabler-icon name="bolt" [size]="16" class="inline-icon"></tabler-icon>
+              Generate Speech
+            }
+          </button>
+
+          <!-- Save to History Toggle -->
+          <label class="save-to-history-toggle">
+            <input 
+              type="checkbox" 
+              [(ngModel)]="saveToHistory"
+              [checked]="saveToHistory()">
+            <span class="toggle-text">
+              <tabler-icon name="bookmark" [size]="16" class="inline-icon"></tabler-icon>
+              Save to History
+            </span>
+          </label>
+        </div>
+
+        <!-- Title Input for History -->
+        @if (saveToHistory()) {
+          <div class="title-input-row">
+            <input 
+              type="text" 
+              [(ngModel)]="historyTitle"
+              placeholder="Title for history (optional)"
+              class="input title-input">
+          </div>
         }
-      </select>
-      
-      <select [(ngModel)]="selectedVoice" class="input">
-        @for (voice of voices; track voice) {
-          <option [value]="voice">{{ voice | titlecase }}</option>
+
+        <!-- Code Editor Style Text Input -->
+        <div class="editor-container">          <div class="editor-header">
+            <span class="editor-title">
+              <tabler-icon name="file-text" [size]="16" class="inline-icon"></tabler-icon>
+              text-to-speech.txt
+            </span>
+            <span class="editor-info">{{ getLineCount() }} lines | {{ getCharCount() }} chars | {{ tokenCount() }} tks | ${{ estimatedCost() }}</span>
+          </div>
+          <div class="editor-wrapper">
+            <div class="line-numbers">
+              @for (line of getLineNumbers(); track $index) {
+                <div class="line-number">{{ line }}</div>
+              }
+            </div>
+            <textarea 
+              [value]="inputText()"
+              (input)="onTextChange($event)"
+              placeholder="Enter text to convert to speech..."
+              class="editor-textarea"
+              [disabled]="isProcessing()"
+              spellcheck="false"></textarea>
+          </div>
+        </div>        <!-- Results -->
+        @if (currentResult() && currentResult()?.status === 'completed') {
+          <div class="results">
+            <button class="result-btn play" (click)="playAudio()">
+              <tabler-icon name="player-play" [size]="16" class="inline-icon"></tabler-icon>
+              Play
+            </button>
+            <button class="result-btn download" (click)="downloadAudio()">
+              <tabler-icon name="download" [size]="16" class="inline-icon"></tabler-icon>
+              Download
+            </button>
+            <button class="result-btn clear" (click)="clearResult()">
+              <tabler-icon name="trash" [size]="16" class="inline-icon"></tabler-icon>
+              Clear
+            </button>
+          </div>
         }
-      </select>
-    </div>    <!-- API Key and Generate Button Row -->
-    <div class="api-generate-row">
-      <input 
-        type="password" 
-        [(ngModel)]="apiKey" 
-        placeholder="API Key"
-        class="input api-key">
-      
-      <button 
-        class="generate-btn"
-        (click)="generateSpeech()"
-        [disabled]="!canGenerate()">
-        @if (isProcessing()) {
-          <span class="spinner"></span> Generating...
-        } @else {
-          🚀 Generate Speech
+
+        <!-- Status -->
+        @if (statusMessage()) {
+          <div class="status" 
+               [class]="currentResult()?.status">
+            {{ statusMessage() }}
+          </div>
         }
-      </button>
+
+        @if (errorMessage()) {
+          <div class="error">{{ errorMessage() }}</div>
+        }
+      </div>
     </div>
-
-    <!-- Code Editor Style Text Input -->
-    <div class="editor-container">
-      <div class="editor-header">
-        <span class="editor-title">📝 text-to-speech.txt</span>
-        <span class="editor-info">{{ getLineCount() }} lines | {{ getCharCount() }} chars</span>
-      </div>
-      <div class="editor-wrapper">
-        <div class="line-numbers">
-          @for (line of getLineNumbers(); track $index) {
-            <div class="line-number">{{ line }}</div>
-          }
-        </div>        <textarea 
-          [value]="inputText()"
-          (input)="onTextChange($event)"
-          placeholder="Enter text to convert to speech..."
-          class="editor-textarea"
-          [disabled]="isProcessing()"
-          spellcheck="false"></textarea>
-      </div>    </div>
-
-    <!-- Results -->
-    @if (currentResult() && currentResult()?.status === 'completed') {
-      <div class="results">
-        <button class="result-btn play" (click)="playAudio()">▶️ Play</button>
-        <button class="result-btn download" (click)="downloadAudio()">💾 Download</button>
-        <button class="result-btn clear" (click)="clearResult()">🗑️ Clear</button>
-      </div>
-    }
-
-    <!-- Status -->
-    @if (statusMessage()) {
-      <div class="status" 
-           [class]="currentResult()?.status">
-        {{ statusMessage() }}
-      </div>
-    }    @if (errorMessage()) {
-      <div class="error">{{ errorMessage() }}</div>
-    }
   </div>
 </div>

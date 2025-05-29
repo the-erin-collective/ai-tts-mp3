@@ -1,3 +1,4 @@
+import { Injectable } from '@angular/core';
 import { TTSSettings, QueryText, ModelProvider } from '../domain/tts.entity';
 import { ProviderError, ProviderErrorType } from '../domain/provider.entity';
 import { Logger } from '../common/utils';
@@ -14,6 +15,9 @@ export interface OpenAITTSResponse {
   audio: ArrayBuffer;
 }
 
+@Injectable({
+  providedIn: 'root'
+})
 export class OpenAITTSService {
   private readonly baseUrl = 'https://api.openai.com/v1/audio/speech';
 

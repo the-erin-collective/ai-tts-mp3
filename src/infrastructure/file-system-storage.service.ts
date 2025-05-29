@@ -3,7 +3,7 @@ import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { HistoryItem, StorageInfo } from './history-storage.service';
-import { TTSResult, TTSSettings, QueryId, TTSResultStatus, ModelProvider } from '../domain/tts.entity';
+import { TTSResult, TTSSettings, QueryId, TTSResultStatus } from '../domain/tts.entity';
 
 // Polyfill interface for Window with showDirectoryPicker
 interface WindowWithDirectoryPicker extends Window {
@@ -54,7 +54,7 @@ export class FileSystemStorageService {
   private storageInfoSubject = new BehaviorSubject<StorageInfo>(this.calculateStorageInfo());
   private folderReconnectionSubject = new BehaviorSubject<FolderReconnectionPrompt | null>(null);
   constructor(
-    @Inject(PLATFORM_ID) private platformId: Object
+    @Inject(PLATFORM_ID) private platformId: object
   ) {
     this.initializeService();
   }
@@ -216,7 +216,7 @@ export class FileSystemStorageService {
 
       console.log('File system storage enabled successfully');
       return { success: true };
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       // Reset state on error
       this.historySubject.next([]);
       this.updateStorageInfo();
@@ -266,7 +266,7 @@ export class FileSystemStorageService {
       await this.loadHistory();
       
       return true;
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error('Failed to disable file system storage:', error);
       return false;
     }
@@ -557,7 +557,18 @@ export class FileSystemStorageService {
       return;
     }
 
-    let parsed: any[];
+    interface SerializedHistoryItemBase {
+      id: string;
+      text: string;
+      settings: TTSSettings;
+      queryId: string;
+      status: string;
+      audioData: number[];
+      timestamp: string;
+      title?: string;
+    }
+
+    let parsed: SerializedHistoryItemBase[];
     try {
       parsed = JSON.parse(raw);
       console.debug('[TTS] loaded history from localStorage:', parsed);

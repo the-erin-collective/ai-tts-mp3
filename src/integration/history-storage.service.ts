@@ -18,7 +18,7 @@ import { TTSSettings, TTSResult } from '../domain/tts.entity';
 export class IntegratedHistoryStorageService {
   private readonly historyStorage: InfraHistoryStorage;
 
-  constructor(@Inject(PLATFORM_ID) private platformId: Object) {
+  constructor(@Inject(PLATFORM_ID) private platformId: object) {
     // Infrastructure service requires FileSystemStorageService as dependency
     const fileSystemStorage = new FileSystemStorageService(this.platformId);
     this.historyStorage = new InfraHistoryStorage(fileSystemStorage);

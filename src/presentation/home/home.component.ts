@@ -12,7 +12,7 @@ import {
   TTSResult, 
   TTSResultStatus
 } from '../../integration/domain-types';
-import { PROVIDER_FLAGS } from '../../domain/provider-flags';
+import { PROVIDER_FLAGS } from '../../integration/provider-flags';
 
 @Component({
   selector: 'app-home',

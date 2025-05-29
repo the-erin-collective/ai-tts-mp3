@@ -3,21 +3,21 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HistoryStorageService, HistoryItem, StorageInfo } from '../../infrastructure/history-storage.service';
 import { TTSResult } from '../../domain/tts.entity';
-import { TablerIconComponent } from '../shared/tabler-icon.component';
 
 @Component({
   selector: 'app-history-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule, TablerIconComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: './history-panel.component.html',
   styleUrl: './history-panel.component.scss'
 })
 export class HistoryPanelComponent {  @Output() historyItemSelected = new EventEmitter<HistoryItem>();
-  
-  // State - removed collapsible functionality
+    // State - removed collapsible functionality
   searchQuery = signal('');
   selectedItemId = signal<string | null>(null);
   showClearModal = signal(false);
+  showDeleteModal = signal(false);
+  itemToDelete = signal<HistoryItem | null>(null);
   
   // Data
   history = signal<HistoryItem[]>([]);
@@ -63,16 +63,27 @@ export class HistoryPanelComponent {  @Output() historyItemSelected = new EventE
     this.selectedItemId.set(item.id);
     this.historyItemSelected.emit(item);
   }
-
   async deleteItem(item: HistoryItem, event: Event): Promise<void> {
     event.stopPropagation();
-    const confirmed = confirm(`Delete this TTS item?\n\n"${this.truncateText(item.text, 60)}"`);
-    if (confirmed) {
+    this.itemToDelete.set(item);
+    this.showDeleteModal.set(true);
+  }
+
+  async confirmDeleteItem(): Promise<void> {
+    const item = this.itemToDelete();
+    if (item) {
       await this.historyService.removeFromHistory(item.id);
       if (this.selectedItemId() === item.id) {
         this.selectedItemId.set(null);
       }
     }
+    this.showDeleteModal.set(false);
+    this.itemToDelete.set(null);
+  }
+
+  cancelDeleteItem(): void {
+    this.showDeleteModal.set(false);
+    this.itemToDelete.set(null);
   }
   async clearAllHistory(): Promise<void> {
     this.showClearModal.set(true);
@@ -130,21 +141,36 @@ export class HistoryPanelComponent {  @Output() historyItemSelected = new EventE
       case 'aws': return 'package';
       default: return 'microphone';
     }
-  }
-  getVoiceIcon(voice: string): string {
-    // Map each voice to unique mood icons that aren't used elsewhere in the app
-    const voiceIcons: { [key: string]: string } = {
-      'alloy': 'mood-happy',
-      'echo': 'mood-smile', 
-      'fable': 'mood-neutral',
-      'onyx': 'mood-crazy-happy',
-      'nova': 'mood-sing',
-      'shimmer': 'mood-nerd',
-      'rachel': 'mood-wink',
-      'drew': 'mood-tongue',
-      'clyde': 'mood-kid'
+  }  getVoiceIcon(voice: string): string {
+    // For OpenAI voices, use actual icon names
+    const openAIVoiceIcons: { [key: string]: string } = {
+      'alloy': 'ghost-3',      
+      'echo': 'moon',          
+      'fable': 'clover',       
+      'onyx': 'carambola',     
+      'nova': 'flower',        
+      'shimmer': 'sunglasses',      
+      'rachel': 'ghost-3',     
+      'drew': 'moon',          
+      'clyde': 'clover'        
     };
-    return voiceIcons[voice.toLowerCase()] || 'masks-theater';
+    return openAIVoiceIcons[voice.toLowerCase()] || 'microphone';
+  }
+
+  // Helper method to get voice display text for non-OpenAI providers
+  getVoiceDisplayText(voice: string, provider: string): string {
+    // For Azure, AWS, and Google voices, extract language code or return voice name
+    if (['azure', 'aws', 'google'].includes(provider.toLowerCase())) {
+      // Try to extract language code from voice name (e.g., 'en-US-AriaNeural' -> 'en-US')
+      const langMatch = voice.match(/^([a-z]{2}-[A-Z]{2})/);
+      if (langMatch) {
+        return langMatch[1];
+      }
+      // Fallback to first part of voice name
+      const parts = voice.split('-');
+      return parts.length > 1 ? parts[0].toUpperCase() : voice.substring(0, 3).toUpperCase();
+    }
+    return voice;
   }
 
   async playHistoryItem(item: HistoryItem, event: Event): Promise<void> {

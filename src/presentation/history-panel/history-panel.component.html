@@ -2,15 +2,16 @@
 <div class="history-panel">  <!-- App Header -->
   <div class="app-header">
     <h2 class="app-title">
-      <tabler-icon name="microphone" [size]="20" class="inline-icon"></tabler-icon>
+      <img src="assets/icons/outline/microphone.svg" width="20" height="20" class="inline-icon">
       AI-TTS-MP3
     </h2>
     <p class="app-subtitle">Text to MP3 conversion</p>
   </div>
 
   <!-- Header -->
-  <div class="history-header">    <div class="header-content">      <h3 class="panel-title">
-        <tabler-icon name="archive" [size]="18" class="inline-icon"></tabler-icon>
+  <div class="history-header">    <div class="header-content">
+      <h3 class="panel-title">
+        <img src="assets/icons/outline/calendar-time.svg" width="18" height="18" class="inline-icon">
         History
         <span class="item-count">({{ storageInfo().itemCount }})</span>
       </h3>
@@ -30,12 +31,13 @@
       </div>
       @if (storageWarningLevel() === 'warning') {
         <div class="storage-warning">
-          <tabler-icon name="alert-triangle" [size]="16" class="inline-icon"></tabler-icon>
+          <img src="assets/icons/outline/alert-triangle.svg" width="16" height="16" class="inline-icon">
           Storage approaching limit
         </div>
-      }      @if (storageWarningLevel() === 'critical') {
+      }
+      @if (storageWarningLevel() === 'critical') {
         <div class="storage-warning critical">
-          <tabler-icon name="alert-circle" [size]="16" class="inline-icon"></tabler-icon>
+          <img src="assets/icons/outline/alert-circle.svg" width="16" height="16" class="inline-icon">
           Storage critically full
         </div>
       }
@@ -49,21 +51,23 @@
         placeholder="Search history..."
         [(ngModel)]="searchQuery"
         [value]="searchQuery()">
-      @if (searchQuery()) {        <button 
+      @if (searchQuery()) {
+        <button 
           class="clear-search-btn" 
           (click)="searchQuery.set('')"
           title="Clear search">
-          <tabler-icon name="x" [size]="14"></tabler-icon>
+          <img src="assets/icons/outline/x.svg" width="14" height="14">
         </button>
       }
     </div>
 
     <!-- Clear All Button -->
-    @if (history().length > 0) {      <button 
+    @if (history().length > 0) {
+      <button 
         class="clear-all-btn" 
         (click)="clearAllHistory()"
         title="Clear all history">
-        <tabler-icon name="trash" [size]="16" class="inline-icon"></tabler-icon>
+        <img src="assets/icons/outline/trash.svg" width="16" height="16" class="inline-icon">
         Clear All
       </button>
     }
@@ -71,15 +75,16 @@
 
   <!-- History List -->
   <div class="history-content">
-      @if (filteredHistory().length === 0) {        <div class="empty-state">
+      @if (filteredHistory().length === 0) {
+        <div class="empty-state">
           @if (searchQuery()) {
             <div class="empty-icon">
-              <tabler-icon name="search" [size]="48" color="#6c757d"></tabler-icon>
+              <img src="assets/icons/outline/search.svg" width="48" height="48" style="filter: invert(55%) sepia(8%) saturate(872%) hue-rotate(169deg) brightness(96%) contrast(95%);">
             </div>
             <div class="empty-message">No items match your search</div>
           } @else {
             <div class="empty-icon">
-              <tabler-icon name="scroll" [size]="48" color="#6c757d"></tabler-icon>
+              <img src="assets/icons/outline/calendar-time.svg" width="48" height="48" style="filter: invert(55%) sepia(8%) saturate(872%) hue-rotate(169deg) brightness(96%) contrast(95%);">
             </div>
             <div class="empty-message">No TTS history yet</div>
             <div class="empty-hint">Generated speech will appear here</div>
@@ -94,14 +99,19 @@
               (click)="selectItem(item)">
               
               <!-- Item Header -->
-              <div class="item-header">                <div class="item-meta">
+              <div class="item-header">
+                <div class="item-meta">
                   <span class="provider-info">
-                    <tabler-icon [name]="getProviderIcon(item.settings.provider)" [size]="14" class="inline-icon"></tabler-icon>
+                    <img [src]="'assets/icons/outline/' + getProviderIcon(item.settings.provider) + '.svg'" width="14" height="14" class="inline-icon">
                     {{ item.settings.provider | titlecase }}
-                  </span>
-                  <span class="voice-info">
-                    <tabler-icon [name]="getVoiceIcon(item.settings.voice)" [size]="14" class="inline-icon"></tabler-icon>
-                    {{ item.settings.voice | titlecase }}
+                  </span>                  <span class="voice-info">
+                    @if (item.settings.provider === 'openai') {
+                      <img [src]="'assets/icons/filled/' + getVoiceIcon(item.settings.voice) + '.svg'" width="14" height="14" class="inline-icon">
+                      {{ item.settings.voice | titlecase }}
+                    } @else {
+                      <span class="language-code">{{ getVoiceDisplayText(item.settings.voice, item.settings.provider) }}</span>
+                      {{ item.settings.voice | titlecase }}
+                    }
                   </span>
                 </div>
                 <div class="item-date">{{ formatDate(item.createdAt) }}</div>
@@ -112,7 +122,8 @@
                 @if (item.metadata?.title) {
                   <div class="item-title">{{ item.metadata?.title || 'Untitled' }}</div>
                 }
-                <div class="item-text">{{ truncateText(item.text, 120) }}</div>                @if (item.metadata && item.metadata.tags && item.metadata.tags.length > 0) {
+                <div class="item-text">{{ truncateText(item.text, 120) }}</div>
+                @if (item.metadata && item.metadata.tags && item.metadata.tags.length > 0) {
                   <div class="item-tags">
                     @for (tag of item.metadata.tags; track tag) {
                       <span class="tag">{{ tag }}</span>
@@ -122,32 +133,36 @@
               </div>
 
               <!-- Item Footer -->
-              <div class="item-footer">                <div class="item-info">
+              <div class="item-footer">
+                <div class="item-info">
                   <span class="file-size">{{ formatFileSize(item.audioSize) }}</span>
                   @if (item.metadata && item.metadata.duration) {
                     <span class="duration">{{ item.metadata.duration }}s</span>
                   }
                 </div>
-                
-                <div class="item-actions">                <button 
+                  <div class="item-actions">
+                <button 
                   class="item-action-btn play-btn" 
                   (click)="playHistoryItem(item, $event)"
                   title="Play audio">
-                  <tabler-icon name="player-play" [size]="14"></tabler-icon>
-                </button>                <button 
+                  <img src="assets/icons/outline/player-play.svg" width="14" height="14" class="action-icon">
+                </button>
+                <button 
                   class="item-action-btn download-btn" 
                   (click)="downloadHistoryItem(item, $event)"
                   title="Download audio">
-                  <tabler-icon name="download" [size]="14"></tabler-icon>
-                </button>                <button 
+                  <img src="assets/icons/outline/download.svg" width="14" height="14" class="action-icon">
+                </button>
+                <button 
                   class="item-action-btn delete-btn" 
                   (click)="deleteItem(item, $event)"
                   title="Delete item">
-                  <tabler-icon name="trash" [size]="14"></tabler-icon>
+                  <img src="assets/icons/outline/trash.svg" width="14" height="14" class="action-icon">
                 </button>
               </div>
             </div>
-          </div>        }
+          </div>
+        }
       </div>
     }
   </div>
@@ -159,12 +174,12 @@
         <div class="modal-header">
           <h3>Clear All History</h3>
           <button class="modal-close-btn" (click)="cancelClearAll()">
-            <tabler-icon name="x" [size]="20"></tabler-icon>
+            <img src="assets/icons/outline/x.svg" width="20" height="20">
           </button>
         </div>
         <div class="modal-body">
           <div class="modal-icon">
-            <tabler-icon name="alert-triangle" [size]="48" color="#dc3545"></tabler-icon>
+            <img src="assets/icons/outline/alert-triangle.svg" width="48" height="48" style="filter: invert(17%) sepia(83%) saturate(6230%) hue-rotate(345deg) brightness(85%) contrast(88%);">
           </div>
           <p>Are you sure you want to clear all TTS history?</p>
           <p class="modal-warning">This action cannot be undone and will permanently delete {{ storageInfo().itemCount }} items.</p>
@@ -174,8 +189,39 @@
             Cancel
           </button>
           <button class="modal-btn danger" (click)="confirmClearAll()">
-            <tabler-icon name="trash" [size]="16" class="inline-icon"></tabler-icon>
+            <img src="assets/icons/outline/trash.svg" width="16" height="16" class="inline-icon">
             Clear All
+          </button>        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Delete Item Confirmation Modal -->
+  @if (showDeleteModal()) {
+    <div class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Delete Item</h3>
+          <button class="modal-close-btn" (click)="cancelDeleteItem()">
+            <img src="assets/icons/outline/x.svg" width="20" height="20">
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-icon">
+            <img src="assets/icons/outline/alert-triangle.svg" width="48" height="48" style="filter: invert(17%) sepia(83%) saturate(6230%) hue-rotate(345deg) brightness(85%) contrast(88%);">
+          </div>
+          <p>Are you sure you want to delete this TTS item?</p>
+          @if (itemToDelete()) {
+            <p class="modal-warning">"{{ truncateText(itemToDelete()!.text, 100) }}"</p>
+          }
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" (click)="cancelDeleteItem()">
+            Cancel
+          </button>
+          <button class="modal-btn danger" (click)="confirmDeleteItem()">
+            <img src="assets/icons/outline/trash.svg" width="16" height="16" class="inline-icon">
+            Delete
           </button>
         </div>
       </div>

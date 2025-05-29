@@ -20,7 +20,7 @@
         @if (storageWarning()) {
           <div class="storage-warning-banner" [class]="storageWarning()?.level">
             <div class="warning-content">              <span class="warning-icon">
-                <tabler-icon name="alert-triangle" [size]="20" [color]="storageWarning()?.level === 'critical' ? '#dc3545' : '#fd7e14'"></tabler-icon>
+                <img src="assets/icons/outline/alert-triangle.svg" width="20" height="20" [class]="storageWarning()?.level === 'critical' ? 'icon-error' : 'icon-warning'">
               </span><span class="warning-message">{{ storageWarning()?.message }}</span>
               @if (storageWarning() && storageWarning()!.itemsToRemove && storageWarning()!.itemsToRemove!.length > 0) {
                 <button 
@@ -32,7 +32,7 @@
                 class="warning-close-btn" 
                 (click)="dismissStorageWarning()"
                 title="Dismiss">
-                <tabler-icon name="x" [size]="16"></tabler-icon>
+                <img src="assets/icons/outline/x.svg" width="16" height="16">
               </button>
             </div>
           </div>
@@ -46,7 +46,7 @@
                 <h3>Items to be Removed</h3>                <button 
                   class="modal-close-btn" 
                   (click)="showRemovalPreview = false">
-                  <tabler-icon name="x" [size]="16"></tabler-icon>
+                  <img src="assets/icons/outline/x.svg" width="16" height="16">
                 </button>
               </div>
               <div class="modal-body">
@@ -114,21 +114,18 @@
             class="generate-btn"
             (click)="generateSpeech()"
             [disabled]="!canGenerate()">            @if (isProcessing()) {
-              <span class="spinner"></span> Generating...
-            } @else {
-              <tabler-icon name="bolt" [size]="16" class="inline-icon"></tabler-icon>
+              <span class="spinner"></span> Generating...            } @else {
+              <img src="assets/icons/outline/bolt.svg" width="16" height="16" class="inline-icon">
               Generate Speech
             }
-          </button>
-
-          <!-- Save to History Toggle -->
-          <label class="save-to-history-toggle">
-            <input 
-              type="checkbox" 
-              [(ngModel)]="saveToHistory"
-              [checked]="saveToHistory()">
+          </button>          <!-- Save to History Toggle -->          <label class="save-to-history-toggle" (click)="saveToHistory.set(!saveToHistory())">            <img 
+              [src]="saveToHistory() ? 'assets/icons/filled/toggle-right.svg' : 'assets/icons/filled/toggle-left.svg'"
+              width="24" 
+              height="24"
+              [class]="saveToHistory() ? 'toggle-icon toggle-on' : 'toggle-icon toggle-off'"
+              class="toggle-icon">
             <span class="toggle-text">
-              <tabler-icon name="bookmark" [size]="16" class="inline-icon"></tabler-icon>
+              <img src="assets/icons/outline/bookmark.svg" width="16" height="16" class="inline-icon">
               Save to History
             </span>
           </label>
@@ -146,9 +143,8 @@
         }
 
         <!-- Code Editor Style Text Input -->
-        <div class="editor-container">          <div class="editor-header">
-            <span class="editor-title">
-              <tabler-icon name="file-text" [size]="16" class="inline-icon"></tabler-icon>
+        <div class="editor-container">          <div class="editor-header">            <span class="editor-title">
+              <img src="assets/icons/outline/file-text.svg" width="16" height="16" class="inline-icon">
               text-to-speech.txt
             </span>
             <span class="editor-info">{{ getLineCount() }} lines | {{ getCharCount() }} chars | {{ tokenCount() }} tks | ${{ estimatedCost() }}</span>
@@ -169,17 +165,16 @@
           </div>
         </div>        <!-- Results -->
         @if (currentResult() && currentResult()?.status === 'completed') {
-          <div class="results">
-            <button class="result-btn play" (click)="playAudio()">
-              <tabler-icon name="player-play" [size]="16" class="inline-icon"></tabler-icon>
+          <div class="results">            <button class="result-btn play" (click)="playAudio()">
+              <img src="assets/icons/outline/player-play.svg" width="16" height="16" class="inline-icon">
               Play
             </button>
             <button class="result-btn download" (click)="downloadAudio()">
-              <tabler-icon name="download" [size]="16" class="inline-icon"></tabler-icon>
+              <img src="assets/icons/outline/download.svg" width="16" height="16" class="inline-icon">
               Download
             </button>
             <button class="result-btn clear" (click)="clearResult()">
-              <tabler-icon name="trash" [size]="16" class="inline-icon"></tabler-icon>
+              <img src="assets/icons/outline/trash.svg" width="16" height="16" class="inline-icon">
               Clear
             </button>
           </div>

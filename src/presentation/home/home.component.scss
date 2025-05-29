@@ -331,15 +331,26 @@
   cursor: pointer;
   font-size: 0.85rem;
   color: #e6edf3;
+  transition: all 0.2s ease;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  user-select: none;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-.save-to-history-toggle input[type="checkbox"] {
-  accent-color: #238636;
+.save-to-history-toggle:hover {
+  background: #21262d;
+}
+
+.toggle-icon {
+  transition: all 0.2s ease;
 }
 
 .toggle-text {
   user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 // Title Input Row

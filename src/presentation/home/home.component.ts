@@ -5,7 +5,6 @@ import { AngularTTSService } from '../../integration/angular-tts.service';
 import { HistoryStorageService, HistoryItem } from '../../infrastructure/history-storage.service';
 import { HistoryPanelComponent } from '../history-panel/history-panel.component';
 import { OpenAITTSService } from '../../infrastructure/openai-tts.service';
-import { TablerIconComponent } from '../shared/tabler-icon.component';
 import { 
   TTSSettings, 
   ModelProvider, 
@@ -19,7 +18,7 @@ import {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, HistoryPanelComponent, TablerIconComponent],
+  imports: [CommonModule, FormsModule, HistoryPanelComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
 })

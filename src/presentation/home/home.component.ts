@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AngularTTSService } from '../../integration/angular-tts.service';
 import { IntegratedHistoryStorageService, HistoryItem } from '../../integration/history-storage.service';
 import { HistoryPanelComponent } from '../history-panel/history-panel.component';
+import { SettingsPanelComponent } from '../settings-panel/settings-panel.component';
 import { 
   TTSSettings, 
   ModelProvider, 
@@ -17,7 +18,7 @@ import { PROVIDER_FLAGS } from '../../integration/provider-flags';
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, HistoryPanelComponent],
+  imports: [CommonModule, FormsModule, HistoryPanelComponent, SettingsPanelComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
 })

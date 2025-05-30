@@ -1,0 +1,112 @@
+.settings-panel {
+  background: #0d1117;
+  border-right: 1px solid #21262d;
+  height: 100vh;
+  overflow: hidden;
+  width: 320px;
+  min-width: 320px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+}
+
+.app-header {
+  background: #161b22;
+  border-bottom: 1px solid #21262d;
+  padding: 1.5rem 1rem 1rem;
+  text-align: center;
+}
+
+.app-title {
+  color: #e6edf3;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.app-subtitle {
+  color: #7d8590;
+  font-size: 0.8rem;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.settings-header {
+  background: #161b22;
+  border-bottom: 1px solid #21262d;
+  padding: 1rem;
+  padding-bottom: 7px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.panel-title {
+  color: #e6edf3;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.empty-state {
+  text-align: center;
+  color: #7d8590;
+}
+
+.empty-icon {
+  margin-bottom: 1rem;
+}
+
+.empty-message {
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.empty-hint {
+  font-size: 0.9rem;
+  color: #444c56;
+}
+
+.settings-footer {
+  background: #161b22;
+  border-top: 1px solid #21262d;
+  padding: 0.75rem 1rem;
+  text-align: center;
+}
+
+.footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.footer-center {
+  flex: 1;
+}
+
+.settings-text {
+  color: #7d8590;
+  font-size: 0.85rem;
+}

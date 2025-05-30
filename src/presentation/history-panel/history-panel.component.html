@@ -1,19 +1,14 @@
 <!-- History Panel Component -->
 <div class="history-panel">  <!-- App Header -->
   <div class="app-header">    <h2 class="app-title">
-      <img src="assets/icons/outline/microphone.svg" width="20" height="20" class="inline-icon" alt="Microphone icon">
-      AI-TTS-MP3
+      <img src="assets/icons/outline/calendar-time.svg" width="20" height="20" class="inline-icon" alt="Calendar time icon">
+      History
+      <span class="item-count">({{ storageInfo().itemCount }})</span>
     </h2>
-    <p class="app-subtitle">Text to MP3 conversion</p>
+    <p class="app-subtitle">Generated speech will appear here</p>
   </div>
-
   <!-- Header -->
-  <div class="history-header">    <div class="header-content">      <h3 class="panel-title">
-        <img src="assets/icons/outline/calendar-time.svg" width="18" height="18" class="inline-icon" alt="Calendar time icon">
-        History
-        <span class="item-count">({{ storageInfo().itemCount }})</span>
-      </h3>
-    </div>    <!-- Storage Indicator -->
+  <div class="history-header">    <!-- Storage Indicator -->
     @if (showStorageBar()) {
       <div class="storage-info" [class]="storageWarningLevel()">
         <div class="storage-header">

@@ -8,7 +8,7 @@ import { PROVIDER_FLAGS } from '../../integration/provider-flags';
 })
 export class SettingsService {
   private isBrowser: boolean;
-  constructor(@Inject(PLATFORM_ID) private platformId: Object) {
+  constructor(@Inject(PLATFORM_ID) private platformId: object) {
     this.isBrowser = isPlatformBrowser(platformId);
   }
 

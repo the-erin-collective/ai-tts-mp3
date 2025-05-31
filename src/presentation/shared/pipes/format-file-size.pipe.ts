@@ -5,7 +5,7 @@ import { Pipe, PipeTransform } from '@angular/core';
   standalone: true,
 })
 export class FormatFileSizePipe implements PipeTransform {
-  transform(bytes: number | null | undefined, decimalPlaces: number = 1): string {
+  transform(bytes: number | null | undefined, decimalPlaces = 1): string {
     if (bytes === null || bytes === undefined || bytes < 0) {
       return '';
     }

@@ -2,7 +2,7 @@ import { Component, signal, computed, Output, EventEmitter } from '@angular/core
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IntegratedHistoryStorageService, HistoryItem, StorageInfo, FileSystemStorageState, FolderReconnectionPrompt } from '../../integration/history-storage.service';
-import { PlaybackService } from '../../infrastructure/audio/playback.service'; // Corrected path
+import { PlaybackService } from '../../integration/playback.service'; // Corrected path
 import { FormatDatePipe } from '../shared/pipes/format-date.pipe'; // Corrected path
 import { FormatFileSizePipe } from '../shared/pipes/format-file-size.pipe'; // Corrected path
 import { FormatDurationPipe } from '../shared/pipes/format-duration.pipe'; // Corrected path

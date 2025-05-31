@@ -4,8 +4,7 @@ import {
   TTSResult, 
   TTSSettings, 
   QueryId, 
-  TTSResultStatus,
-  ApiKey
+  TTSResultStatus
 } from '../domain/tts.entity';
 import { 
   TTSQueryRepository, 

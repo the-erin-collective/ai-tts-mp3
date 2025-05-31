@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, Inject, PLATFORM_ID } from '@angular/core';
+import { Injectable, signal, Inject, PLATFORM_ID, OnDestroy } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { TTSResult } from '../../domain/tts.entity'; // Corrected path to domain layer
 import { HistoryItem } from '../history-storage.service'; // Import HistoryItem from infrastructure
@@ -6,7 +6,7 @@ import { HistoryItem } from '../history-storage.service'; // Import HistoryItem 
 @Injectable({
   providedIn: 'root'
 })
-export class PlaybackService {
+export class PlaybackService implements OnDestroy {
   private audio: HTMLAudioElement | undefined;
   private currentAudioUrl: string | null = null;
   private currentAudioData: ArrayBuffer | null = null;
@@ -105,9 +105,7 @@ export class PlaybackService {
         this.audio!.removeEventListener('canplay', onCanPlay);
         resolve();
       };
-      this.audio.addEventListener('canplay', onCanPlay);
-
-      const onError = (e: Event) => {
+      this.audio.addEventListener('canplay', onCanPlay);      const onError = () => {
         this.audio!.removeEventListener('error', onError);
         if (this.currentAudioUrl) {
           URL.revokeObjectURL(this.currentAudioUrl);
@@ -150,7 +148,7 @@ export class PlaybackService {
    * Stops the currently playing audio and cleans up.
    * @param cleanup If true, cleans up resources. If false, just stops playback.
    */  
-  stop(cleanup: boolean = true): void {
+  stop(cleanup = true): void {
     if (isPlatformBrowser(this.platformId) && this.audio) {
         this.audio.pause();
         this._isPlaying.set(false);

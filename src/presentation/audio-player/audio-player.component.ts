@@ -1,11 +1,10 @@
 import { Component, Input, computed, signal, effect, OnDestroy, inject, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TTSResult } from '../../domain/tts.entity';
+import { TTSResult } from '../../integration/domain-types';
 import { FormatDatePipe } from '../shared/pipes/format-date.pipe';
 import { FormatDurationPipe } from '../shared/pipes/format-duration.pipe';
-import { FormatFileSizePipe } from '../shared/pipes/format-file-size.pipe';
 import { TruncateTextPipe } from '../shared/pipes/truncate-text.pipe';
-import { PlaybackService } from '../../infrastructure/audio/playback.service';
+import { PlaybackService } from '../../integration/playback.service';
 import { AngularTTSService } from '../../integration/angular-tts.service';
 import { SettingsService } from '../shared/settings.service';
 import { HistoryItem } from '../../integration/history-storage.service';
@@ -120,19 +119,11 @@ export class AudioPlayerComponent implements OnDestroy {
   // Effect to react to changes in currentQueryInfo and potentially trigger playback
   // Note: Actual playback initiation is now handled by PlaybackService, often triggered by user action (clicking play)
   // This effect might be used for other state updates in the AudioPlayerComponent based on the selected item.
-  private queryInfoEffect = effect(() => {
-    const info = this.currentQueryInfo();
-    // Add any logic needed when the selected history item changes
-    // Example: if you wanted to auto-play when selecting a new item:
-    // if (info?.id) { this.playbackService.playItemById(info.id); }
-    // However, based on user feedback, playback is triggered by clicking the play button in the history item list.
-  });
-
-  constructor() { }
-
-  ngOnDestroy(): void {
-    // Clean up any resources if needed (e.g., subscriptions)
-    // PlaybackService should handle audio cleanup
+  private queryInfoEffect = effect(() => {    this.currentQueryInfo();
+    // Effect runs to track changes in currentQueryInfo
+    // Playback is handled by user interaction through the play button
+  });  ngOnDestroy(): void {
+    this.playbackService.stop();
   }
 
   async downloadAudio() {
@@ -179,24 +170,28 @@ export class AudioPlayerComponent implements OnDestroy {
     await this.playbackService.seekToPercentage(percentage * 100, shouldPlay);
   }
 
-  onProgressBarKeydown(event: KeyboardEvent) {
-      const seekPercentage = 5; // Seek by 5% of total duration
-      const currentPercentage = (this.playbackService.currentTime() / this.playbackService.totalDuration()) * 100;      switch (event.key) {
+  onProgressBarKeydown(event: KeyboardEvent) {      const seekPercentage = 5; // Seek by 5% of total duration
+      const currentPercentage = (this.playbackService.currentTime() / this.playbackService.totalDuration()) * 100;      
+      let newPercentage: number;
+      let isSeekingToEnd: boolean;
+      let shouldPlay: boolean;
+
+      switch (event.key) {
         case 'ArrowLeft':
           event.preventDefault();
-          const prevPercentage = Math.max(0, currentPercentage - seekPercentage);
+          newPercentage = Math.max(0, currentPercentage - seekPercentage);
           // Always play when seeking to a new position, unless seeking to 100%
-          const isSeekingToEnd = Math.abs(prevPercentage - 100) < 0.1;
-          const shouldPlay = !isSeekingToEnd;
-          this.playbackService.seekToPercentage(prevPercentage, shouldPlay);
+          isSeekingToEnd = Math.abs(newPercentage - 100) < 0.1;
+          shouldPlay = !isSeekingToEnd;
+          this.playbackService.seekToPercentage(newPercentage, shouldPlay);
           break;
         case 'ArrowRight':
           event.preventDefault();
-          const nextPercentage = Math.min(100, currentPercentage + seekPercentage);
+          newPercentage = Math.min(100, currentPercentage + seekPercentage);
           // Always play when seeking to a new position, unless seeking to 100%
-          const isSeekingToEndNext = Math.abs(nextPercentage - 100) < 0.1;
-          const shouldPlayNext = !isSeekingToEndNext;
-          this.playbackService.seekToPercentage(nextPercentage, shouldPlayNext);
+          isSeekingToEnd = Math.abs(newPercentage - 100) < 0.1;
+          shouldPlay = !isSeekingToEnd;
+          this.playbackService.seekToPercentage(newPercentage, shouldPlay);
           break;
         case 'Enter':
         case ' ':

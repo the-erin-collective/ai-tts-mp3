@@ -2,11 +2,15 @@ import { Component, signal, computed, Output, EventEmitter } from '@angular/core
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IntegratedHistoryStorageService, HistoryItem, StorageInfo, FileSystemStorageState, FolderReconnectionPrompt } from '../../integration/history-storage.service';
+import { FormatDatePipe } from '../../app/pipes/format-date.pipe';
+import { FormatFileSizePipe } from '../../app/pipes/format-file-size.pipe';
+import { FormatDurationPipe } from '../../app/pipes/format-duration.pipe';
+import { TruncateTextPipe } from '../../app/pipes/truncate-text.pipe';
 
 @Component({
   selector: 'app-history-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FormatDatePipe, FormatFileSizePipe, FormatDurationPipe, TruncateTextPipe],
   templateUrl: './history-panel.component.html',
   styleUrl: './history-panel.component.scss'
 })
@@ -169,36 +173,6 @@ export class HistoryPanelComponent {  @Output() historyItemSelected = new EventE
   // Panel control methods removed - panel is always open
 
   // Utility methods
-  formatDate(date: Date): string {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffHours < 1) {
-      const diffMinutes = Math.floor(diffMs / (1000 * 60));
-      return diffMinutes < 1 ? 'Just now' : `${diffMinutes}m ago`;
-    } else if (diffHours < 24) {
-      return `${diffHours}h ago`;
-    } else if (diffDays < 7) {
-      return `${diffDays}d ago`;
-    } else {
-      return date.toLocaleDateString();
-    }
-  }
-
-  formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-  }
-
-  truncateText(text: string, maxLength: number): string {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
-  }
   getProviderIcon(provider: string): string {
     switch (provider.toLowerCase()) {
       case 'openai': return 'robot';

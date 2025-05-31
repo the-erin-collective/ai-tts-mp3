@@ -300,6 +300,7 @@ export class FileSystemStorageService {
         audioData: result.audioData,
         createdAt: result.createdAt,
         updatedAt: result.updatedAt,
+        duration: result.duration
       },
       createdAt: new Date(),
       audioSize: result.audioData.length,
@@ -454,6 +455,7 @@ export class FileSystemStorageService {
       audioData: Array.from(item.result.audioData!),
       timestamp: item.result.createdAt.toISOString(),
       title:     item.metadata?.title ?? null,
+      duration: item.result.duration
     }));
     console.debug('[TTS] saving history to localStorage:', serializable);
     localStorage.setItem(key, JSON.stringify(serializable));
@@ -517,7 +519,8 @@ export class FileSystemStorageService {
               status: 'completed' as const,
               audioData,
               createdAt: new Date(meta.createdAt),
-              updatedAt: new Date(meta.createdAt)
+              updatedAt: new Date(meta.createdAt),
+              duration: meta.duration !== undefined ? meta.duration : (audioData.length > 0 ? (audioData.length / (128 * 1024 / 8)) : undefined)
             }
           };
 
@@ -566,6 +569,7 @@ export class FileSystemStorageService {
       audioData: number[];
       timestamp: string;
       title?: string;
+      duration?: number;
     }
 
     let parsed: SerializedHistoryItemBase[];
@@ -590,6 +594,7 @@ export class FileSystemStorageService {
         audioData: Uint8Array.from(r.audioData),
         createdAt: new Date(r.timestamp),
         updatedAt: new Date(r.timestamp),
+        duration: r.duration !== undefined ? r.duration : (r.audioData && r.audioData.length > 0 ? (r.audioData.length / (128 * 1024 / 8)) : undefined)
       },
       createdAt: new Date(r.timestamp),
       audioSize: r.audioData.length,

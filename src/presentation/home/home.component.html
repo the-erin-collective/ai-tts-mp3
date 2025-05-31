@@ -1,176 +1,91 @@
-<!-- Home Component with History Panel Layout -->
-<div class="app-layout"> <!-- History Panel -->
-  <app-settings-panel>
+ <!-- GitHub Banner -->
+<div class="github-banner">
+  <a href="https://github.com/the-erin-collective/ai-tts-mp3" target="_blank" class="github-banner-link">
+    View on GitHub
+  </a>
+</div>
 
-  </app-settings-panel>
-
+<div class="app-layout">
+  <!-- Settings Panel -->
+  <app-settings-panel></app-settings-panel>
+  
   <!-- Main Content Area -->
-  <div class="main-content" [class.with-history]="showHistoryPanel()">
-    <div class="container"> <!-- GitHub Banner -->
-      <div class="github-banner">
-        <a href="https://github.com/the-erin-collective/ai-tts-mp3" target="_blank" class="github-banner-link">
-          View on GitHub
-        </a>
-      </div><!-- Header -->
-      <div class="header">
-        <!-- Storage Warning Banner -->
-        @if (storageWarning()) {
-        <div class="storage-warning-banner" [class]="storageWarning()?.level">
-          <div class="warning-content"> <span class="warning-icon">
-              <img src="assets/icons/outline/alert-triangle.svg" width="20" height="20"
-                [class]="storageWarning()?.level === 'critical' ? 'icon-error' : 'icon-warning'" alt="Warning">
-            </span><span class="warning-message">{{ storageWarning()?.message }}</span>
-            @if (storageWarning() && storageWarning()!.itemsToRemove && storageWarning()!.itemsToRemove!.length > 0) {
-            <button class="warning-action-btn" (click)="showRemovalPreview = true">
-              View Items to Remove
-            </button>
-            } <button class="warning-close-btn" (click)="dismissStorageWarning()" title="Dismiss">
-              <img src="assets/icons/outline/x.svg" width="16" height="16" alt="Close">
-            </button>
-          </div>
-        </div>
+  <div class="main-content">
+    <!-- Storage Warning Banner -->
+    @if (storageWarning()) {
+    <div class="storage-warning-banner" [class]="storageWarning()?.level">
+      <div class="warning-content">
+        <span class="warning-icon">
+          <img src="assets/icons/outline/alert-triangle.svg" width="20" height="20"
+            [class]="storageWarning()?.level === 'critical' ? 'icon-error' : 'icon-warning'" alt="Warning">
+        </span>
+        <span class="warning-message">{{ storageWarning()?.message }}</span>
+        @if (storageWarning() && storageWarning()!.itemsToRemove && storageWarning()!.itemsToRemove!.length > 0) {
+        <button class="warning-action-btn" (click)="showRemovalPreview = true">
+          View Items to Remove
+        </button>
         }
-
-        <!-- Removal Preview Modal -->
-        @if (showRemovalPreview && storageWarning()?.itemsToRemove) {
-        <div class="removal-preview-modal">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h3>Items to be Removed</h3> <button class="modal-close-btn" (click)="showRemovalPreview = false">
-                <img src="assets/icons/outline/x.svg" width="16" height="16" alt="Close">
-              </button>
-            </div>
-            <div class="modal-body">
-              <p>The following items will be automatically removed to make space:</p>
-              <div class="items-to-remove">
-                @for (item of storageWarning()!.itemsToRemove; track item.id) {
-                <div class="removal-item">
-                  <div class="item-text">{{ truncateText(item.text, 60) }}</div>
-                  <div class="item-details">
-                    {{ formatDate(item.createdAt) }} • {{ formatFileSize(item.audioSize) }}
-                  </div>
-                </div>
-                }
-              </div>
-            </div>
-            <div class="modal-actions">
-              <button class="modal-btn cancel" (click)="cancelGeneration()">
-                Cancel Generation
-              </button>
-              <button class="modal-btn proceed" (click)="proceedWithGeneration()">
-                Proceed Anyway
-              </button>
-            </div>
-          </div>
-        </div>
-        }
+        <button class="warning-close-btn" (click)="dismissStorageWarning()" title="Dismiss">
+          <img src="assets/icons/outline/x.svg" width="16" height="16" alt="Close">
+        </button>
       </div>
+    </div>    }    <!-- Editor Container - Takes remaining space -->
+    <div class="editor-container">
+      <app-editor 
+        [inputText]="inputText()"
+        [currentResult]="currentResult()"
+        [isProcessing]="isProcessing()"
+        [errorMessage]="errorMessage()"
+        (textChanged)="onTextChange($event)"
+        (generateSpeech)="generateSpeech()"
+        (clearResult)="clearResult()">
+      </app-editor>
+    </div>
+      <!-- Audio Player - Fixed at bottom -->
+    <div class="audio-player-container">
+      <app-audio-player 
+        [currentResult]="currentResult()"
+        [currentQueryInfo]="currentQueryInfo()"
+        (clearResult)="clearResult()">
+      </app-audio-player>
+    </div>
+  </div>
+  
+  <!-- History Panel -->
+  <app-history-panel (historyItemSelected)="onHistoryItemSelected($event)"></app-history-panel>
+</div>
 
-      <!-- Main Form -->
-      <div class="main-form">
-        <!-- Settings Row -->
-        <div class="settings-row">
-          <select [(ngModel)]="selectedProvider" (change)="onProviderChange()" class="input">
-            @for (provider of providers; track provider) {
-            <option [value]="provider">{{ provider | titlecase }}</option>
-            }
-          </select>
-
-          <select [(ngModel)]="selectedModel" class="input">
-            @for (model of models(); track model) {
-            <option [value]="model">{{ model }}</option>
-            }
-          </select>
-
-          <select [(ngModel)]="selectedVoice" class="input">
-            @for (voice of voices(); track voice) {
-            <option [value]="voice">{{ voice | titlecase }}</option>
-            }
-          </select>
-        </div>
-
-        <!-- API Key and Generate Button Row -->
-        <div class="api-generate-row">
-          <input type="password" [(ngModel)]="apiKey" placeholder="API Key" class="input api-key">
-
-          <button class="generate-btn" (click)="generateSpeech()" [disabled]="!canGenerate()"> @if (isProcessing()) {
-            <span class="spinner"></span> Generating... } @else {
-            <img src="assets/icons/outline/bolt.svg" width="16" height="16" class="inline-icon" alt="Generate">
-            Generate Speech
-            }
-          </button> <!-- Save to History Toggle -->
-          <div class="save-to-history-toggle" (click)="saveToHistory.set(!saveToHistory())"
-            (keyup.enter)="saveToHistory.set(!saveToHistory())" (keyup.space)="saveToHistory.set(!saveToHistory())"
-            tabindex="0" role="button"
-            [attr.aria-label]="'Toggle save to history: ' + (saveToHistory() ? 'enabled' : 'disabled')">
-            <img
-              [src]="saveToHistory() ? 'assets/icons/filled/toggle-right.svg' : 'assets/icons/filled/toggle-left.svg'"
-              width="24" height="24" [class]="saveToHistory() ? 'toggle-icon toggle-on' : 'toggle-icon toggle-off'"
-              class="toggle-icon" [alt]="saveToHistory() ? 'Toggle on' : 'Toggle off'">
-            <span class="toggle-text">
-              <img src="assets/icons/outline/bookmark.svg" width="16" height="16" class="inline-icon" alt="Bookmark">
-              Save to History
-            </span>
+<!-- Removal Preview Modal -->
+@if (showRemovalPreview && storageWarning()?.itemsToRemove) {
+<div class="removal-preview-modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Items to be Removed</h3>
+      <button class="modal-close-btn" (click)="showRemovalPreview = false">
+        <img src="assets/icons/outline/x.svg" width="16" height="16" alt="Close">
+      </button>
+    </div>
+    <div class="modal-body">
+      <p>The following items will be automatically removed to make space:</p>
+      <div class="items-to-remove">
+        @for (item of storageWarning()!.itemsToRemove; track item.id) {
+        <div class="removal-item">
+          <div class="item-text">{{ item.text | truncateText:60 }}</div>
+          <div class="item-details">
+            {{ item.createdAt | formatDate }} • {{ item.audioSize | formatFileSize }}
           </div>
         </div>
-
-        <!-- Title Input for History -->
-        @if (saveToHistory()) {
-        <div class="title-input-row">
-          <input type="text" [(ngModel)]="historyTitle" placeholder="Title for history (optional)"
-            class="input title-input">
-        </div>
-        }
-
-        <!-- Code Editor Style Text Input -->
-        <div class="editor-container">
-          <div class="editor-header"> <span class="editor-title">
-              <img src="assets/icons/outline/file-text.svg" width="16" height="16" class="inline-icon" alt="File">
-              text-to-speech.txt
-            </span>
-            <span class="editor-info">{{ getLineCount() }} lines | {{ getCharCount() }} chars | {{ tokenCount() }} tks |
-              {{ estimatedCost() }}</span>
-          </div>
-          <div class="editor-wrapper">
-            <div class="line-numbers">
-              @for (line of getLineNumbers(); track $index) {
-              <div class="line-number">{{ line }}</div>
-              }
-            </div>
-            <textarea [value]="inputText()" (input)="onTextChange($event)"
-              placeholder="Enter text to convert to speech..." class="editor-textarea" [disabled]="isProcessing()"
-              spellcheck="false"></textarea>
-          </div>
-        </div> <!-- Results -->
-        @if (currentResult() && currentResult()?.status === 'completed') {
-        <div class="results"> <button class="result-btn play" (click)="playAudio()">
-            <img src="assets/icons/outline/player-play.svg" width="16" height="16" class="inline-icon" alt="Play">
-            Play
-          </button>
-          <button class="result-btn download" (click)="downloadAudio()">
-            <img src="assets/icons/outline/download.svg" width="16" height="16" class="inline-icon" alt="Download">
-            Download
-          </button>
-          <button class="result-btn clear" (click)="clearResult()">
-            <img src="assets/icons/outline/trash.svg" width="16" height="16" class="inline-icon" alt="Clear">
-            Clear
-          </button>
-        </div>
-        }
-
-        <!-- Status -->
-        @if (statusMessage()) {
-        <div class="status" [class]="currentResult()?.status">
-          {{ statusMessage() }}
-        </div>
-        }
-
-        @if (errorMessage()) {
-        <div class="error">{{ errorMessage() }}</div>
         }
       </div>
     </div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" (click)="cancelGeneration()">
+        Cancel Generation
+      </button>
+      <button class="modal-btn proceed" (click)="proceedWithGeneration()">
+        Proceed Anyway
+      </button>
+    </div>
   </div>
-  <app-history-panel (historyItemSelected)="onHistoryItemSelected($event)">
-  </app-history-panel>
 </div>
+}

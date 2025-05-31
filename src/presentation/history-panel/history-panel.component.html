@@ -31,7 +31,7 @@
         </div>
         <div class="storage-text">
           <span class="storage-percentage">{{ storageDisplayPercentage() }}%</span>
-          <span class="storage-details">{{ formatFileSize(storageInfo().used) }} / {{ formatFileSize(storageInfo().total) }}</span>
+          <span class="storage-details">{{ storageInfo().used | formatFileSize }} / {{ storageInfo().total | formatFileSize }}</span>
         </div>
         @if (storageWarningLevel() === 'warning') {
           <div class="storage-warning">
@@ -144,7 +144,7 @@
                     }
                   </span>
                 </div>
-                <div class="item-date">{{ formatDate(item.createdAt) }}</div>
+                <div class="item-date" [title]="item.createdAt | date:'medium'">{{ item.createdAt | formatDate }}</div>
               </div>
 
               <!-- Item Content -->
@@ -152,7 +152,7 @@
                 @if (item.metadata?.title) {
                   <div class="item-title">{{ item.metadata?.title || 'Untitled' }}</div>
                 }
-                <div class="item-text">{{ truncateText(item.text, 120) }}</div>
+                <div class="item-text">{{ item.text | truncateText:120 }}</div>
                 @if (item.metadata && item.metadata.tags && item.metadata.tags.length > 0) {
                   <div class="item-tags">
                     @for (tag of item.metadata.tags; track tag) {
@@ -165,10 +165,8 @@
               <!-- Item Footer -->
               <div class="item-footer">
                 <div class="item-info">
-                  <span class="file-size">{{ formatFileSize(item.audioSize) }}</span>
-                  @if (item.metadata && item.metadata.duration) {
-                    <span class="duration">{{ item.metadata.duration }}s</span>
-                  }
+                  <span class="file-size">{{ item.audioSize | formatFileSize }}</span>
+                  <span class="duration">{{ item.result.duration | formatDuration }}</span>
                 </div>
                   <div class="item-actions">                <button 
                   class="item-action-btn play-btn" 
@@ -192,11 +190,10 @@
         }
       </div>    }
   </div>
-
   <!-- Footer -->
   <div class="history-footer">
     <div class="footer-content">
-      <div class="footer-left">
+      <div class="footer-center">
         <span class="footer-by">by:</span>
         <a href="https://www.youtube.com/@solarpunkdev" target="_blank" title="YouTube" class="social-link">
           <img src="assets/icons/outline/brand-youtube.svg" width="18" height="18" class="inline-icon" alt="YouTube">
@@ -210,10 +207,6 @@
         <a href="https://bsky.app/profile/solarpunk-dev.bsky.social" target="_blank" title="Bluesky" class="social-link">
           <img src="assets/icons/outline/butterfly.svg" width="18" height="18" class="inline-icon" alt="Bluesky">
         </a>
-      </div>
-      <span class="footer-divider"></span>
-      <div class="footer-right">
-        <span class="license-text">Licensed under AGPL v3</span>
       </div>
     </div>
   </div>
@@ -258,7 +251,7 @@
           </div>
           <p>Are you sure you want to delete this TTS item?</p>
           @if (itemToDelete()) {
-            <p class="modal-warning">"{{ truncateText(itemToDelete()!.text, 100) }}"</p>
+            <p class="modal-warning">"{{ itemToDelete()!.text | truncateText:100 }}"</p>
           }
         </div>
         <div class="modal-footer">

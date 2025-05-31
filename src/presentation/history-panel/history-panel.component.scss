@@ -726,13 +726,13 @@
 .footer-content {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   width: 100%;
   max-width: 350px;
   gap: 0;
 }
 
-.footer-left {
+.footer-center {
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -775,39 +775,6 @@
 .social-link:hover img,
 .social-link:focus img {
   filter: grayscale(0) brightness(1.5) invert(1) sepia(0) !important; /* pure white */
-}
-
-.footer-divider {
-  display: inline-block;
-  width: 1px;
-  height: 24px;
-  background: #30363d;
-  margin: 0 1rem;
-  vertical-align: middle;
-}
-
-.footer-right {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  padding-right: 5px;
-  /* Center the license text in the right half */
-}
-
-.license-text {
-  color: #7d8590;
-  font-size: 0.95rem;
-  letter-spacing: 0.01em;
-  text-align: center;
-  width: 100%;
-  margin: 0 6px 0 0px;
-  display: block;
-  font-weight: 400;
-  cursor: default;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 //# sourceMappingURL=history-panel.css.map

@@ -1,0 +1,45 @@
+<!-- Audio Player Component Template -->
+@if (hasAudio()) {
+  <div class="audio-player">    <div class="audio-header">
+      <div class="audio-title" [title]="currentQueryInfo()?.text || ''">{{ displayText() | truncateText:60 }}</div>
+    </div><div class="player-controls">      <div class="left-metadata">
+        <span class="provider-info">{{ displayProvider() }}</span>
+        <span class="model-info">{{ displayModel() }}</span>
+        <span class="voice-info">{{ displayVoice() }}</span>
+      </div>
+      
+      <button class="control-btn play-btn" (click)="isPlaying() ? pauseAudio() : playAudio()" title="{{ isPlaying() ? 'Pause' : 'Play' }}">
+        @if (isPlaying()) {
+          <img src="assets/icons/outline/player-pause.svg" width="16" height="16" alt="Pause">
+        } @else {
+          <img src="assets/icons/outline/player-play.svg" width="16" height="16" alt="Play">
+        }
+      </button>
+      
+      <div class="progress-section">
+        <div class="time-info">
+          <span class="current-time">{{ formattedCurrentTime() }}</span>
+          <span class="total-time">{{ formattedDuration() }}</span>
+        </div>        <div class="progress-bar" (click)="seekTo($event)" (keydown)="onProgressKeydown($event)" tabindex="0" role="slider" [attr.aria-valuenow]="progressPercentage()" aria-valuemin="0" aria-valuemax="100" aria-label="Audio progress">
+          <div class="progress-fill" [style.width.%]="progressPercentage()"></div>
+        </div>
+      </div>
+      
+      <button class="control-btn download-btn" (click)="downloadAudio()" title="Download">
+        <img src="assets/icons/outline/download.svg" width="16" height="16" alt="Download">
+      </button>
+        <div class="right-metadata">
+        <span class="created-at-info" [title]="displayCreatedAt() | date:'medium'">{{ displayCreatedAt() | formatDate }}</span>
+        <span class="size-info">{{ displaySize() }}</span>
+        <span class="duration-info" [class.estimated]="!formattedDuration()">{{ formattedDuration() }}</span>
+      </div>
+    </div>
+  </div>
+} @else {
+  <div class="audio-placeholder">
+    <div class="placeholder-content">
+      <p class="placeholder-text">Generate speech to see audio controls here</p>
+      <img src="assets/icons/outline/music.svg" width="32" height="32" class="placeholder-icon" alt="Music">
+    </div>
+  </div>
+}

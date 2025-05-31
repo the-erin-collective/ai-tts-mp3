@@ -1,46 +1,48 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { AngularTTSService } from '../../integration/angular-tts.service';
 import { IntegratedHistoryStorageService, HistoryItem } from '../../integration/history-storage.service';
 import { HistoryPanelComponent } from '../history-panel/history-panel.component';
 import { SettingsPanelComponent } from '../settings-panel/settings-panel.component';
+import { EditorComponent } from '../editor/editor.component';
+import { AudioPlayerComponent } from '../audio-player/audio-player.component';
+import { SettingsService } from '../shared/settings.service';
+import { TruncateTextPipe } from '../../app/pipes/truncate-text.pipe';
+import { FormatDatePipe } from '../../app/pipes/format-date.pipe';
+import { FormatFileSizePipe } from '../../app/pipes/format-file-size.pipe';
 import { 
   TTSSettings, 
-  ModelProvider, 
   Voice, 
   ApiKey, 
-  TTSResult, 
-  TTSResultStatus
+  TTSResult
 } from '../../integration/domain-types';
-import { PROVIDER_FLAGS } from '../../integration/provider-flags';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, HistoryPanelComponent, SettingsPanelComponent],
+  imports: [CommonModule, HistoryPanelComponent, SettingsPanelComponent, EditorComponent, AudioPlayerComponent, TruncateTextPipe, FormatDatePipe, FormatFileSizePipe],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
 })
 export class HomeComponent {
-  // TTS Application state using Angular 20 signals
-  title = signal('AI TTS MP3 App');
+  // Inject services using modern Angular patterns
+  private ttsService = inject(AngularTTSService);
+  private historyService = inject(IntegratedHistoryStorageService);
+  private settingsService = inject(SettingsService);
+  // Application state using Angular signals
   inputText = signal('');
-  isProcessing = signal(false);
-  currentResult = signal<TTSResult | null>(null);
+  isProcessing = signal(false);  currentResult = signal<TTSResult | null>(null);  currentQueryInfo = signal<{
+    text: string;
+    title?: string;
+    settings?: {
+      provider: string;
+      model: string;
+      voice: string;
+    };
+    estimatedDuration?: number; // in seconds
+    createdAt: Date;
+  } | null>(null);
   errorMessage = signal('');
-
-  // Settings state
-  selectedProvider = signal<ModelProvider>(ModelProvider.OPENAI);
-  selectedModel = signal('tts-1');
-  selectedVoice = signal<Voice>(Voice.ALLOY);
-  apiKey = signal('');
-  
-  // History state
-  showHistoryPanel = signal(true); // Open by default
-  saveToHistory = signal(true);
-  historyTitle = signal('');
-  showRemovalPreview = false;
   
   // Storage warning state
   private storageWarningState = signal<{
@@ -48,102 +50,29 @@ export class HomeComponent {
     message: string;
     itemsToRemove?: HistoryItem[];
   } | null>(null);
+  
+  // UI state
+  showRemovalPreview = false;
 
   // Computed properties
   canGenerate = computed(() => {
     return this.inputText().trim().length > 0 &&
-           this.apiKey().trim().length > 0 && 
+           this.settingsService.apiKey().trim().length > 0 && 
            !this.isProcessing();
-  });
-
-  statusMessage = computed(() => {
-    const result = this.currentResult();
-    if (!result) return '';
-    
-    switch (result.status) {
-      case TTSResultStatus.PENDING:
-        return 'Request queued...';
-      case TTSResultStatus.PROCESSING:
-        return 'Generating speech...';
-      case TTSResultStatus.COMPLETED:
-        return 'Speech generated successfully!';
-      case TTSResultStatus.FAILED:
-        return `Error: ${result.error?.message || 'Unknown error'}`;
-      case TTSResultStatus.CANCELLED:
-        return 'Request cancelled';
-      default:
-        return '';
-    }
   });
 
   storageWarning = computed(() => this.storageWarningState());
 
-  // Token counting and cost estimation
-  tokenCount = computed(() => {
-    const text = this.inputText();
-    if (!text.trim()) return 0;
-    // For TTS, we approximate tokens as character count / 4 (rough estimate)
-    // but for display purposes, we'll use word count as it's more meaningful
-    return text.trim().split(/\s+/).length;
-  });
-
-  estimatedCost = computed(() => {
-    const text = this.inputText();
-    if (!text.trim()) return '~$0.00000 est.';
-    const characterCount = text.length;
-    const selectedModel = this.selectedModel();
-    const provider = this.selectedProvider();
-    let cost: number;
-    if (provider === ModelProvider.OPENAI) {
-      cost = this.ttsService.estimateCost(characterCount, selectedModel);
-    } else {
-      cost = characterCount * 0.000015;
-    }
-    // Always show 5 decimal places, no duplicate $
-    return `~$${Number(cost).toFixed(5)} est.`;
-  });
-
-  // Available options for dropdowns
-  providers = Object.values(ModelProvider).filter(p => PROVIDER_FLAGS[p as ModelProvider]);
-
-  openAIVoices = [
-    'nova', 'shimmer', 'echo', 'onyx', 'fable', 'alloy', 'ash', 'sage', 'coral'
-  ];
-
-  elevenLabsVoices = [
-    // Add valid ElevenLabs voices here when ready
-    'rachel', 'drew', 'clyde'
-  ];
-
-  voices = computed(() => {
-    switch (this.selectedProvider()) {
-      case ModelProvider.OPENAI:
-        return this.openAIVoices;
-      case ModelProvider.ELEVENLABS:
-        return this.elevenLabsVoices;
-      default:
-        return [];
-    }
-  });
-  
-  models = computed(() => {
-    switch (this.selectedProvider()) {
-      case ModelProvider.OPENAI:
-        return ['tts-1', 'tts-1-hd'];
-      case ModelProvider.ELEVENLABS:
-        return ['eleven_multilingual_v2', 'eleven_turbo_v2_5'];
-      default:
-        return ['default'];
-    }
-  });
-
-  constructor(
-    private ttsService: AngularTTSService,
-    private historyService: IntegratedHistoryStorageService
-  ) {
+  constructor() {
     this.loadSavedSettings();
   }
 
+  // Text editor event handlers
+  onTextChange(text: string) {
+    this.inputText.set(text);
+  }
+
+  // Generation workflow
   async generateSpeech() {
     if (!this.canGenerate()) return;
 
@@ -151,11 +80,10 @@ export class HomeComponent {
       this.isProcessing.set(true);
       this.errorMessage.set('');
       this.storageWarningState.set(null);
-      // Auto-clear previous results when starting new generation
       this.currentResult.set(null);
 
       // Check storage before generation if saving to history
-      if (this.saveToHistory()) {
+      if (this.settingsService.saveToHistory()) {
         const text = this.inputText();
         const estimatedSize = text.length * 100; // Rough estimate: 100 bytes per character
         const itemsToRemove = this.historyService.getItemsToBeRemoved(estimatedSize);
@@ -171,7 +99,6 @@ export class HomeComponent {
             itemsToRemove
           });
           
-          // Don't proceed automatically, let user decide
           this.isProcessing.set(false);
           return;
         }
@@ -185,111 +112,6 @@ export class HomeComponent {
     }
   }
 
-  async playAudio() {
-    const result = this.currentResult();
-    if (!result) return;
-
-    try {
-      const audio = await this.ttsService.playAudio(result);
-      if (audio) {
-        await audio.play();
-      }
-    } catch {
-      this.errorMessage.set('Failed to play audio');
-    }
-  }
-
-  async downloadAudio() {
-    const result = this.currentResult();
-    if (!result) return;
-
-    try {
-      const audioUrl = await this.ttsService.downloadAudio(result);
-      if (audioUrl) {
-        const link = document.createElement('a');
-        link.href = audioUrl;
-        link.download = `tts-audio-${Date.now()}.mp3`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(audioUrl);
-      }
-    } catch {
-      this.errorMessage.set('Failed to download audio');
-    }
-  }
-
-  clearResult() {
-    this.currentResult.set(null);
-    this.errorMessage.set('');
-  }
-
-  onProviderChange() {
-    // Reset model when provider changes
-    const models = this.models();
-    if (models.length > 0) {
-      this.selectedModel.set(models[0]);
-    }
-  }
-
-  // Editor functionality methods
-  onTextChange(event: Event) {
-    const target = event.target as HTMLTextAreaElement;
-    this.inputText.set(target.value);
-  }
-
-  getLineCount(): number {
-    const text = this.inputText();
-    if (!text) return 1;
-    return text.split('\n').length;
-  }
-
-  getCharCount(): number {
-    return this.inputText().length;
-  }
-
-  getLineNumbers(): number[] {
-    const lineCount = this.getLineCount();
-    return Array.from({ length: lineCount }, (_, i) => i + 1);
-  }
-
-  private async loadSavedSettings() {
-    try {
-      const result = await this.ttsService.loadSettings();
-      if (result.isSuccess()) {
-        const settings = result.getValue();
-        if (settings) {
-          this.selectedProvider.set(settings.provider);
-          this.selectedModel.set(settings.model);
-          this.selectedVoice.set(settings.voice as Voice);
-          if (settings.apiKey) {
-            this.apiKey.set(settings.apiKey.getValue());
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load saved settings:', error);
-    }
-  }
-
-  // History panel methods removed - panel is always open
-
-  onHistoryItemSelected(item: HistoryItem): void {
-    // Load the selected history item into the current form
-    this.inputText.set(item.text);
-    this.selectedProvider.set(item.settings.provider);
-    this.selectedModel.set(item.settings.model);
-    this.selectedVoice.set(item.settings.voice as Voice);
-    if (item.settings.apiKey) {
-      this.apiKey.set(item.settings.apiKey.getValue());
-    }
-    this.currentResult.set(item.result);
-    
-    if (item.metadata?.title) {
-      this.historyTitle.set(item.metadata.title);
-    }
-  }
-
   // Storage warning methods
   dismissStorageWarning(): void {
     this.storageWarningState.set(null);
@@ -300,36 +122,36 @@ export class HomeComponent {
     this.storageWarningState.set(null);
     this.isProcessing.set(false);
   }
-
+  // Make proceedWithGeneration public
   async proceedWithGeneration(): Promise<void> {
     try {
       this.showRemovalPreview = false;
       
       const settings: TTSSettings = {
-        provider: this.selectedProvider(),
-        model: this.selectedModel(),
-        voice: this.selectedVoice(),
-        apiKey: new ApiKey(this.apiKey())
+        provider: this.settingsService.selectedProvider(),
+        model: this.settingsService.selectedModel(),
+        voice: this.settingsService.selectedVoice(),
+        apiKey: new ApiKey(this.settingsService.apiKey())
       };
 
       // Save settings for next time
       await this.ttsService.saveSettings(settings);
 
+      // Capture title before it might get cleared
+      const currentTitle = this.settingsService.historyTitle() || undefined;
+      
       // Generate speech
       const result = await this.ttsService.generateSpeech(this.inputText(), settings);
       
       if (result) {
-        this.currentResult.set(result);
-        
-        // Save to history if enabled
-        if (this.saveToHistory()) {
+        // Save to history first if enabled
+        if (this.settingsService.saveToHistory()) {
           const historyResult = await this.historyService.addToHistory(
             this.inputText(),
             settings,
             result,
             {
-              title: this.historyTitle() || undefined,
-              duration: this.estimateDuration(this.inputText())
+              title: currentTitle,
             }
           );
           
@@ -338,10 +160,21 @@ export class HomeComponent {
           }
           
           // Clear the title after saving
-          this.historyTitle.set('');
-        }
+          this.settingsService.historyTitle.set('');
+        }        // Set audio player data consistently (same as when selecting from history)
+        this.currentResult.set(result);
+        this.currentQueryInfo.set({
+          text: this.inputText(),
+          title: currentTitle,
+          createdAt: result.createdAt,
+          settings: {
+            provider: settings.provider,
+            model: settings.model,
+            voice: settings.voice
+          },
+          estimatedDuration: undefined
+        });
         
-        // Clear storage warning after successful save
         this.storageWarningState.set(null);
       } else {
         this.errorMessage.set('Failed to generate speech');
@@ -353,43 +186,70 @@ export class HomeComponent {
       this.isProcessing.set(false);
     }
   }
-
-  // Utility methods
-  formatDate(date: Date): string {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffHours < 1) {
-      const diffMinutes = Math.floor(diffMs / (1000 * 60));
-      return diffMinutes < 1 ? 'Just now' : `${diffMinutes}m ago`;
-    } else if (diffHours < 24) {
-      return `${diffHours}h ago`;
-    } else if (diffDays < 7) {
-      return `${diffDays}d ago`;
+  // Result management
+  clearResult() {
+    this.currentResult.set(null);
+    this.currentQueryInfo.set(null);
+    this.errorMessage.set('');
+  }  // History integration
+  onHistoryItemSelected(item: HistoryItem): void {
+    this.inputText.set(item.text);
+    this.settingsService.selectedProvider.set(item.settings.provider);
+    this.settingsService.selectedModel.set(item.settings.model);
+    this.settingsService.selectedVoice.set(item.settings.voice as Voice);
+    if (item.settings.apiKey) {
+      this.settingsService.apiKey.set(item.settings.apiKey.getValue());
+    }
+    
+    // Set the current result and ensure fileSize is populated from history
+    const result = item.result;
+    if (result && !result.fileSize && item.audioSize) {
+      // Create a copy of the result with the fileSize from history
+      this.currentResult.set({
+        ...result,
+        fileSize: item.audioSize
+      });
     } else {
-      return date.toLocaleDateString();
+      this.currentResult.set(result);
+    }
+    
+    // Set current query info for the audio player with consistent structure
+    this.currentQueryInfo.set({
+      text: item.text,
+      title: item.metadata?.title,
+      createdAt: item.createdAt,
+      settings: {
+        provider: item.settings.provider,
+        model: item.settings.model,
+        voice: item.settings.voice
+      },
+      estimatedDuration: item.metadata?.duration
+    });
+    
+    if (item.metadata?.title) {
+      this.settingsService.historyTitle.set(item.metadata.title);
+    } else {
+      this.settingsService.historyTitle.set('');
     }
   }
 
-  formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-  }
-
-  truncateText(text: string, maxLength: number): string {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
-  }
-
-  private estimateDuration(text: string): number {
-    // Rough estimation: average speaking rate is about 150-200 words per minute
-    const words = text.trim().split(/\s+/).length;
-    const wordsPerMinute = 175; // Average speaking rate
-    return Math.ceil((words / wordsPerMinute) * 60); // Duration in seconds
+  // Settings management
+  private async loadSavedSettings() {
+    try {
+      const result = await this.ttsService.loadSettings();
+      if (result.isSuccess()) {
+        const settings = result.getValue();
+        if (settings) {
+          this.settingsService.selectedProvider.set(settings.provider);
+          this.settingsService.selectedModel.set(settings.model);
+          this.settingsService.selectedVoice.set(settings.voice as Voice);
+          if (settings.apiKey) {
+            this.settingsService.apiKey.set(settings.apiKey.getValue());
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load saved settings:', error);
+    }
   }
 }

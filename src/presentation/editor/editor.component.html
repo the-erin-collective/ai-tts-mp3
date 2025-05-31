@@ -1,0 +1,89 @@
+<!-- Editor Component Template -->
+<div class="editor-card">
+  <!-- Title Input Row with Toggle -->
+  <div class="input-row">
+    <div class="input-with-toggle">
+      <input 
+        type="text" 
+        [value]="settingsService.historyTitle()" 
+        (input)="onTitleChange($event)"
+        placeholder="Title for history (optional)"
+        class="input title-input"
+        [class.disabled]="!settingsService.saveToHistory()">
+      
+      <div class="toggle-container">
+        <label class="toggle">
+          <input 
+            type="checkbox" 
+            [checked]="settingsService.saveToHistory()" 
+            (change)="onSaveToHistoryChange($event)">
+          <span class="toggle-track">
+            <span class="toggle-thumb">
+              @if (settingsService.saveToHistory()) {
+              <img src="assets/icons/filled/toggle-right.svg" width="24" height="24" alt="Enabled">
+              } @else {
+              <img src="assets/icons/filled/toggle-left.svg" width="24" height="24" alt="Disabled">
+              }
+            </span>
+          </span>
+        </label>
+        <span class="toggle-text">Save to History</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Code Editor Style Text Input -->
+  <div class="editor-container">
+    <div class="editor-header">
+      <span class="editor-title">
+        <img src="assets/icons/outline/file-text.svg" width="16" height="16" class="inline-icon" alt="File">
+        text-to-speech.txt
+      </span>
+      <span class="editor-info">{{ getLineCount() }} lines | {{ getCharCount() }} chars | {{ tokenCount() }} tks | {{ estimatedCost() }}</span>
+    </div>
+    <div class="editor-wrapper">
+      <div class="line-numbers">
+        @for (line of getLineNumbers(); track $index) {
+        <div class="line-number">{{ line }}</div>
+        }
+      </div>      <textarea 
+        [value]="inputText()"
+        (input)="onTextChange($event)"
+        placeholder="Enter text to convert to speech..." 
+        class="editor-textarea" 
+        [disabled]="isProcessing()"
+        spellcheck="false"></textarea>
+    </div>
+  </div>
+  
+  <!-- Bottom Section with Status Messages and Generate Button -->
+  <div class="editor-bottom">
+    <div class="status-section">
+      <!-- Status Messages -->
+      @if (statusMessage()) {
+      <div class="status" [class]="currentResult()?.status">
+        {{ statusMessage() }}
+      </div>
+      }
+      @if (errorMessage()) {
+      <div class="error">{{ errorMessage() }}</div>
+      }
+    </div>
+    
+    <!-- Generate Button Section -->
+    <div class="generate-section">
+      <button 
+        class="generate-btn" 
+        [disabled]="!canGenerate()"
+        (click)="onGenerateSpeech()">
+        @if (isProcessing()) {
+          <span class="spinner"></span>
+          Generating...
+        } @else {
+          <img src="assets/icons/outline/microphone.svg" width="16" height="16" class="inline-icon" alt="Generate">
+          Generate Speech
+        }
+      </button>
+    </div>
+  </div>
+</div>

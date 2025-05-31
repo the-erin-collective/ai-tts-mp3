@@ -8,20 +8,35 @@
         <span class="voice-info">{{ displayVoice() }}</span>
       </div>
       
-      <button class="control-btn play-btn" (click)="isPlaying() ? pauseAudio() : playAudio()" title="{{ isPlaying() ? 'Pause' : 'Play' }}">
-        @if (isPlaying()) {
-          <img src="assets/icons/outline/player-pause.svg" width="16" height="16" alt="Pause">
-        } @else {
-          <img src="assets/icons/outline/player-play.svg" width="16" height="16" alt="Play">
-        }
-      </button>
-      
-      <div class="progress-section">
-        <div class="time-info">
-          <span class="current-time">{{ formattedCurrentTime() }}</span>
-          <span class="total-time">{{ formattedDuration() }}</span>
-        </div>        <div class="progress-bar" (click)="seekTo($event)" (keydown)="onProgressKeydown($event)" tabindex="0" role="slider" [attr.aria-valuenow]="progressPercentage()" aria-valuemin="0" aria-valuemax="100" aria-label="Audio progress">
+      <div class="playback-controls">
+        <button
+          class="icon-button large"
+          (click)="onPlayPauseClick()"
+          [title]="playbackService.isPlaying() ? 'Pause' : 'Play'">
+          @if (playbackService.isPlaying()) {
+          <img src="assets/icons/outline/player-pause.svg" alt="Pause">
+          } @else {
+          <img src="assets/icons/outline/player-play.svg" alt="Play">
+          }
+        </button>
+
+        <div class="progress-container">
+         
+
+          <div class="time-info">
+            <span class="current-time">{{ playbackService.currentTime() | formatDuration }}</span>
+            <span class="total-time">{{ currentResult()?.duration | formatDuration }}</span>
+          </div>          <div
+          class="progress-bar"
+          (click)="onProgressBarClick($event)"
+          (keydown)="onProgressBarKeydown($event)"
+          tabindex="0"
+          role="slider"
+          aria-label="Audio playback progress"
+          [attr.aria-valuenow]="playbackService.currentTime() | number:'1.0-0'"
+          [attr.aria-valuemax]="currentResult()?.duration | number:'1.0-0'">
           <div class="progress-fill" [style.width.%]="progressPercentage()"></div>
+        </div>
         </div>
       </div>
       
@@ -31,7 +46,7 @@
         <div class="right-metadata">
         <span class="created-at-info" [title]="displayCreatedAt() | date:'medium'">{{ displayCreatedAt() | formatDate }}</span>
         <span class="size-info">{{ displaySize() }}</span>
-        <span class="duration-info" [class.estimated]="!formattedDuration()">{{ formattedDuration() }}</span>
+        <span class="duration-info">{{ currentResult()?.duration | formatDuration }}</span>
       </div>
     </div>
   </div>

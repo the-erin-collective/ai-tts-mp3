@@ -1,21 +1,22 @@
-import { Component, signal, computed, inject } from '@angular/core';
+import { Component, signal, computed, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AngularTTSService } from '../../integration/angular-tts.service';
-import { IntegratedHistoryStorageService, HistoryItem } from '../../integration/history-storage.service';
+import { IntegratedHistoryStorageService } from '../../integration/history-storage.service';
 import { HistoryPanelComponent } from '../history-panel/history-panel.component';
 import { SettingsPanelComponent } from '../settings-panel/settings-panel.component';
 import { EditorComponent } from '../editor/editor.component';
 import { AudioPlayerComponent } from '../audio-player/audio-player.component';
 import { SettingsService } from '../shared/settings.service';
-import { TruncateTextPipe } from '../../app/pipes/truncate-text.pipe';
-import { FormatDatePipe } from '../../app/pipes/format-date.pipe';
-import { FormatFileSizePipe } from '../../app/pipes/format-file-size.pipe';
+import { TruncateTextPipe } from '../shared/pipes/truncate-text.pipe';
+import { FormatDatePipe } from '../shared/pipes/format-date.pipe';
+import { FormatFileSizePipe } from '../shared/pipes/format-file-size.pipe';
 import { 
   TTSSettings, 
   Voice, 
   ApiKey, 
   TTSResult
 } from '../../integration/domain-types';
+import { HistoryItem as IntegratedHistoryItem } from '../../integration/history-storage.service';
 
 @Component({
   selector: 'app-home',
@@ -25,6 +26,8 @@ import {
   styleUrl: './home.component.scss'
 })
 export class HomeComponent {
+  @ViewChild(HistoryPanelComponent) private historyPanel?: HistoryPanelComponent;
+
   // Inject services using modern Angular patterns
   private ttsService = inject(AngularTTSService);
   private historyService = inject(IntegratedHistoryStorageService);
@@ -48,7 +51,7 @@ export class HomeComponent {
   private storageWarningState = signal<{
     level: 'warning' | 'critical';
     message: string;
-    itemsToRemove?: HistoryItem[];
+    itemsToRemove?: IntegratedHistoryItem[];
   } | null>(null);
   
   // UI state
@@ -142,7 +145,6 @@ export class HomeComponent {
       
       // Generate speech
       const result = await this.ttsService.generateSpeech(this.inputText(), settings);
-      
       if (result) {
         // Save to history first if enabled
         if (this.settingsService.saveToHistory()) {
@@ -161,7 +163,9 @@ export class HomeComponent {
           
           // Clear the title after saving
           this.settingsService.historyTitle.set('');
-        }        // Set audio player data consistently (same as when selecting from history)
+        }
+
+        // Set audio player data consistently (same as when selecting from history)
         this.currentResult.set(result);
         this.currentQueryInfo.set({
           text: this.inputText(),
@@ -175,6 +179,16 @@ export class HomeComponent {
           estimatedDuration: undefined
         });
         
+        // Update history panel selection
+        if (this.historyPanel) {
+          // The newest item will be at the start since they're stored in reverse chronological order
+          const latestItems = await this.historyService.getHistoryItems();
+          if (latestItems.length > 0) {
+            const latestItem = latestItems[0];
+            this.historyPanel.selectItem(latestItem);
+          }
+        }
+
         this.storageWarningState.set(null);
       } else {
         this.errorMessage.set('Failed to generate speech');
@@ -192,7 +206,7 @@ export class HomeComponent {
     this.currentQueryInfo.set(null);
     this.errorMessage.set('');
   }  // History integration
-  onHistoryItemSelected(item: HistoryItem): void {
+  onHistoryItemSelected(item: IntegratedHistoryItem): void {
     this.inputText.set(item.text);
     this.settingsService.selectedProvider.set(item.settings.provider);
     this.settingsService.selectedModel.set(item.settings.model);

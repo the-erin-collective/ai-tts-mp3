@@ -100,4 +100,4 @@ export class IntegratedHistoryStorageService {
 }
 
 // Re-export types for convenience
-export type { HistoryItem, StorageInfo, FileSystemStorageState, FolderReconnectionPrompt };
+export type { HistoryItem, StorageInfo, FileSystemStorageState, FolderReconnectionPrompt, TTSResult };

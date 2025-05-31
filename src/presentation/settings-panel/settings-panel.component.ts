@@ -6,6 +6,7 @@ import { ModelProvider } from '../../integration/domain-types';
 
 @Component({
   selector: 'app-settings-panel',
+  standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './settings-panel.component.html',
   styleUrl: './settings-panel.component.scss'

@@ -1,61 +1,75 @@
-import { Component, signal, computed, inject, input, output, effect } from '@angular/core';
+import { Component, Input, computed, signal, effect, OnDestroy, inject, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TTSResult } from '../../domain/tts.entity';
+import { FormatDatePipe } from '../shared/pipes/format-date.pipe';
+import { FormatDurationPipe } from '../shared/pipes/format-duration.pipe';
+import { FormatFileSizePipe } from '../shared/pipes/format-file-size.pipe';
+import { TruncateTextPipe } from '../shared/pipes/truncate-text.pipe';
+import { PlaybackService } from '../../infrastructure/audio/playback.service';
 import { AngularTTSService } from '../../integration/angular-tts.service';
-import { TTSResult } from '../../integration/domain-types';
 import { SettingsService } from '../shared/settings.service';
-import { TruncateTextPipe } from '../../app/pipes/truncate-text.pipe';
-import { FormatDatePipe } from '../../app/pipes/format-date.pipe';
+import { HistoryItem } from '../../integration/history-storage.service';
+import { ModelProvider, Voice } from '../../integration/domain-types';
+
+// Define a type for currentQueryInfo
+interface CurrentQueryInfo {
+  text: string;
+  title?: string;
+  settings?: { provider: string; model: string; voice: string; };
+  estimatedDuration?: number;
+  createdAt?: Date;
+  id?: string;
+}
 
 @Component({
   selector: 'app-audio-player',
   standalone: true,
-  imports: [CommonModule, TruncateTextPipe, FormatDatePipe],
+  imports: [CommonModule, FormatDatePipe, FormatDurationPipe, TruncateTextPipe],
   templateUrl: './audio-player.component.html',
   styleUrl: './audio-player.component.scss'
 })
-export class AudioPlayerComponent {
+export class AudioPlayerComponent implements OnDestroy {
   // Inject services
   private ttsService = inject(AngularTTSService);
-  protected settingsService = inject(SettingsService);  // Input properties
-  currentResult = input<TTSResult | null>(null);
-  currentQueryInfo = input<{
-    text: string;
-    title?: string;
-    settings?: {
-      provider: string;
-      model: string;
-      voice: string;
-    };
-    estimatedDuration?: number; // in seconds
-    createdAt?: Date;
-  } | null>(null);
+  protected settingsService = inject(SettingsService);
+  public playbackService = inject(PlaybackService);
+
+  // Input signal for the current query information
+  @Input() currentQueryInfo = signal<CurrentQueryInfo | null>(null);
+  @Input() currentResult = signal<TTSResult | null>(null);
 
   // Output events
   clearResult = output<void>();
 
-  // Local state
-  isPlaying = signal(false);
-  currentAudio = signal<HTMLAudioElement | null>(null);
-  currentTime = signal(0);
-  duration = signal(0);
+  // Computed property for display text - Using pipe
+  displayText = computed(() => {
+    const info = this.currentQueryInfo();
+    if (!info) return '...'; // Or an appropriate placeholder
+    // Prioritize title if available, otherwise use truncated text
+    const textToDisplay = info.title || info.text;
+    // The truncation pipe is applied in the template
+    return textToDisplay;
+  });
+
+  // Computed property for display creation date - Using pipe
+  displayCreatedAt = computed(() => {
+    const info = this.currentQueryInfo();
+    if (!info?.createdAt) return '-';
+    // Rely on template usage of FormatDatePipe
+    return info.createdAt.toISOString();
+  });
 
   // Computed properties
   hasAudio = computed(() => {
     const result = this.currentResult();
     return result && result.status === 'completed';
   });
-
+  // Computed property for progress percentage (using PlaybackService state)
   progressPercentage = computed(() => {
-    const dur = this.duration();
-    const curr = this.currentTime();
-    return dur > 0 ? (curr / dur) * 100 : 0;
-  });
-
-  formattedCurrentTime = computed(() => {
-    return this.formatTime(this.currentTime());
-  });
-  formattedDuration = computed(() => {
-    return this.formatTime(this.duration());
+    const dur = this.currentResult()?.duration || 0; // Use duration from result or 0
+    const curr = this.playbackService.currentTime();
+    const isAtEnd = !this.playbackService.isPlaying() && this.playbackService.hasEnded();
+    return dur > 0 ? (isAtEnd ? 100 : (curr / dur) * 100) : 0;
   });
 
   // Computed properties for metadata display
@@ -68,10 +82,6 @@ export class AudioPlayerComponent {
   });
   displayVoice = computed(() => {
     return this.currentQueryInfo()?.settings?.voice || this.settingsService.selectedVoice();
-  });
-  displayEstimatedDuration = computed(() => {
-    const duration = this.currentQueryInfo()?.estimatedDuration;
-    return duration ? this.formatTime(duration) : '';
   });
 
   displayTitle = computed(() => {
@@ -107,83 +117,24 @@ export class AudioPlayerComponent {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   });
 
-  // New computed property for display text (title or truncated text)
-  displayText = computed(() => {
+  // Effect to react to changes in currentQueryInfo and potentially trigger playback
+  // Note: Actual playback initiation is now handled by PlaybackService, often triggered by user action (clicking play)
+  // This effect might be used for other state updates in the AudioPlayerComponent based on the selected item.
+  private queryInfoEffect = effect(() => {
     const info = this.currentQueryInfo();
-    if (!info) return '';
-    const title = info.title;
-    const text = info.text;
-    
-    // Use title if available, otherwise truncate text using the pipe directly in template
-    return title || (text ? text : '');
+    // Add any logic needed when the selected history item changes
+    // Example: if you wanted to auto-play when selecting a new item:
+    // if (info?.id) { this.playbackService.playItemById(info.id); }
+    // However, based on user feedback, playback is triggered by clicking the play button in the history item list.
   });
 
-  // New computed property for display creation date
-  displayCreatedAt = computed(() => {
-    const info = this.currentQueryInfo();
-    if (!info?.createdAt) return '';
-    // Will apply pipe in template
-    return info.createdAt;
-  });
+  constructor() { }
 
-  // Effect to update duration signal
-  private updateDurationEffect = effect(() => {
-    const result = this.currentResult();
-    const info = this.currentQueryInfo();
-
-    // Prioritize actual duration from result if available (from generation or history)
-    if (result?.duration !== undefined) {
-      this.duration.set(result.duration);
-    } else if (info?.estimatedDuration !== undefined) {
-      // Fallback to estimated duration from query info if actual duration is not available
-      this.duration.set(info.estimatedDuration);
-    } else {
-      // Default to 0 if no duration is available
-      this.duration.set(0);
-    }
-  });
-
-  async playAudio() {
-    const result = this.currentResult();
-    if (!result) return;
-
-    try {
-      // Stop current audio if playing
-      const currentAudio = this.currentAudio();
-      if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.currentTime = 0;
-      }
-
-      const audio = await this.ttsService.playAudio(result);
-      if (audio) {
-        this.currentAudio.set(audio);
-        this.setupAudioListeners(audio);
-        await audio.play();
-        this.isPlaying.set(true);
-      }
-    } catch (error) {
-      console.error('Failed to play audio:', error);
-    }
+  ngOnDestroy(): void {
+    // Clean up any resources if needed (e.g., subscriptions)
+    // PlaybackService should handle audio cleanup
   }
 
-  pauseAudio() {
-    const audio = this.currentAudio();
-    if (audio) {
-      audio.pause();
-      this.isPlaying.set(false);
-    }
-  }
-
-  stopAudio() {
-    const audio = this.currentAudio();
-    if (audio) {
-      audio.pause();
-      audio.currentTime = 0;
-      this.isPlaying.set(false);
-      this.currentTime.set(0);
-    }
-  }
   async downloadAudio() {
     const result = this.currentResult();
     if (!result) return;
@@ -207,77 +158,82 @@ export class AudioPlayerComponent {
       console.error('Failed to download audio:', error);
     }
   }
-
   onClearResult() {
-    this.stopAudio();
-    this.currentAudio.set(null);
-    this.duration.set(0);
-    this.currentTime.set(0);
     this.clearResult.emit();
   }
 
-  seekTo(event: Event) {
-    const audio = this.currentAudio();
-    const target = event.target as HTMLInputElement;
-    if (audio && this.duration() > 0) {
-      const seekTime = (parseFloat(target.value) / 100) * this.duration();
-      audio.currentTime = seekTime;
-      this.currentTime.set(seekTime);
+  async onProgressBarClick(event: MouseEvent) {
+    const progressBar = event.currentTarget as HTMLElement;
+    const rect = progressBar.getBoundingClientRect();
+    const offsetX = Math.min(Math.max(0, event.clientX - rect.left), rect.width); // Clamp value
+    const percentage = offsetX / rect.width;
+    
+    // Always load the audio first if not loaded
+    if (!this.playbackService.totalDuration()) {
+      await this.playbackService.loadAudio(this.currentResult()!, this.currentQueryInfo()?.id);
+    }
+
+    // Always play when seeking to a new position, unless the seek is to 100%
+    const isSeekingToEnd = Math.abs(percentage * 100 - 100) < 0.1;
+    const shouldPlay = !isSeekingToEnd;
+    await this.playbackService.seekToPercentage(percentage * 100, shouldPlay);
+  }
+
+  onProgressBarKeydown(event: KeyboardEvent) {
+      const seekPercentage = 5; // Seek by 5% of total duration
+      const currentPercentage = (this.playbackService.currentTime() / this.playbackService.totalDuration()) * 100;      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault();
+          const prevPercentage = Math.max(0, currentPercentage - seekPercentage);
+          // Always play when seeking to a new position, unless seeking to 100%
+          const isSeekingToEnd = Math.abs(prevPercentage - 100) < 0.1;
+          const shouldPlay = !isSeekingToEnd;
+          this.playbackService.seekToPercentage(prevPercentage, shouldPlay);
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          const nextPercentage = Math.min(100, currentPercentage + seekPercentage);
+          // Always play when seeking to a new position, unless seeking to 100%
+          const isSeekingToEndNext = Math.abs(nextPercentage - 100) < 0.1;
+          const shouldPlayNext = !isSeekingToEndNext;
+          this.playbackService.seekToPercentage(nextPercentage, shouldPlayNext);
+          break;
+        case 'Enter':
+        case ' ':
+          event.preventDefault();
+          this.playbackService.togglePlayPause(this.currentResult(), this.currentQueryInfo()?.id); // Toggle play/pause
+          break;
+      }
+    }
+
+    // Helper method to construct HistoryItem for playback
+    private constructHistoryItem(): HistoryItem | null {
+      const info = this.currentQueryInfo();
+      const result = this.currentResult();
+      
+      if (!info || !result) return null;
+
+      return {
+        id: info.id || result.queryId?.getValue() || 'current',
+        text: info.text,
+        settings: {
+          provider: (info.settings?.provider || this.settingsService.selectedProvider()) as ModelProvider,
+          model: info.settings?.model || this.settingsService.selectedModel(),
+          voice: (info.settings?.voice || this.settingsService.selectedVoice()) as Voice,
+          apiKey: undefined // Not needed for playback
+        },
+        result: result,
+        createdAt: info.createdAt || result.createdAt || new Date(),
+        audioSize: result.fileSize || 0,
+        metadata: info.title ? { title: info.title } : undefined
+      };
+    }
+
+    // Handle play/pause click
+    onPlayPauseClick(): void {
+      const historyItem = this.constructHistoryItem();
+      if (historyItem) {
+        this.playbackService.togglePlayPause(historyItem);
+      }
     }
   }
-  onProgressKeydown(event: KeyboardEvent) {
-    const audio = this.currentAudio();
-    if (!audio) return;
-
-    switch (event.key) {
-      case 'ArrowLeft':
-        event.preventDefault();
-        audio.currentTime = Math.max(0, audio.currentTime - 5);
-        break;
-      case 'ArrowRight':
-        event.preventDefault();
-        audio.currentTime = Math.min(audio.duration, audio.currentTime + 5);
-        break;
-      case 'Enter':
-      case ' ':
-        event.preventDefault();
-        if (this.isPlaying()) {
-          this.pauseAudio();
-        } else {
-          this.playAudio();
-        }
-        break;
-    }
-  }
-
-  private setupAudioListeners(audio: HTMLAudioElement) {
-    audio.addEventListener('loadedmetadata', () => {
-      this.duration.set(audio.duration);
-    });
-
-    audio.addEventListener('timeupdate', () => {
-      this.currentTime.set(audio.currentTime);
-    });
-
-    audio.addEventListener('ended', () => {
-      this.isPlaying.set(false);
-      this.currentTime.set(0);
-    });
-
-    audio.addEventListener('pause', () => {
-      this.isPlaying.set(false);
-    });
-
-    audio.addEventListener('play', () => {
-      this.isPlaying.set(true);
-    });
-  }
-
-  private formatTime(seconds: number): string {
-    // Ensure we have at least 1 second for display
-    const totalSeconds = Math.max(1, Math.round(seconds));
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = Math.floor(totalSeconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  }
-}

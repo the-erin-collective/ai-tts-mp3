@@ -170,9 +170,11 @@
                 </div>
                   <div class="item-actions">                <button 
                   class="item-action-btn play-btn" 
-                  (click)="playHistoryItem(item, $event)"
-                  title="Play audio">
-                  <img src="assets/icons/outline/player-play.svg" width="14" height="14" class="action-icon" alt="Play">
+                  (click)="playbackService.togglePlayPause(item)"
+                  [title]="playbackService.playingItemId() === item.id && playbackService.isPlaying() ? 'Pause audio' : 'Play audio'">
+                  <img [src]="playbackService.playingItemId() === item.id && playbackService.isPlaying() ? 'assets/icons/outline/player-pause.svg' : 'assets/icons/outline/player-play.svg'" 
+                       width="14" height="14" class="action-icon" 
+                       [alt]="playbackService.playingItemId() === item.id && playbackService.isPlaying() ? 'Pause' : 'Play'">
                 </button>                <button 
                   class="item-action-btn download-btn" 
                   (click)="downloadHistoryItem(item, $event)"

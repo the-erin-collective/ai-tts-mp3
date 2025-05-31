@@ -2,10 +2,11 @@ import { Component, signal, computed, Output, EventEmitter } from '@angular/core
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IntegratedHistoryStorageService, HistoryItem, StorageInfo, FileSystemStorageState, FolderReconnectionPrompt } from '../../integration/history-storage.service';
-import { FormatDatePipe } from '../../app/pipes/format-date.pipe';
-import { FormatFileSizePipe } from '../../app/pipes/format-file-size.pipe';
-import { FormatDurationPipe } from '../../app/pipes/format-duration.pipe';
-import { TruncateTextPipe } from '../../app/pipes/truncate-text.pipe';
+import { PlaybackService } from '../../infrastructure/audio/playback.service'; // Corrected path
+import { FormatDatePipe } from '../shared/pipes/format-date.pipe'; // Corrected path
+import { FormatFileSizePipe } from '../shared/pipes/format-file-size.pipe'; // Corrected path
+import { FormatDurationPipe } from '../shared/pipes/format-duration.pipe'; // Corrected path
+import { TruncateTextPipe } from '../shared/pipes/truncate-text.pipe'; // Corrected path
 
 @Component({
   selector: 'app-history-panel',
@@ -14,16 +15,18 @@ import { TruncateTextPipe } from '../../app/pipes/truncate-text.pipe';
   templateUrl: './history-panel.component.html',
   styleUrl: './history-panel.component.scss'
 })
-export class HistoryPanelComponent {  @Output() historyItemSelected = new EventEmitter<HistoryItem>();
-    // State - removed collapsible functionality
+export class HistoryPanelComponent {
+  @Output() historyItemSelected = new EventEmitter<HistoryItem>();
+  // State - removed collapsible functionality
   searchQuery = signal('');
   selectedItemId = signal<string | null>(null);
   showClearModal = signal(false);
   showDeleteModal = signal(false);
   itemToDelete = signal<HistoryItem | null>(null);
-    // Data
+  // Data
   history = signal<HistoryItem[]>([]);
-  storageInfo = signal<StorageInfo>({ used: 0, available: 0, total: 0, usedPercentage: 0, itemCount: 0 });  fileSystemState = signal<FileSystemStorageState>({ 
+  storageInfo = signal<StorageInfo>({ used: 0, available: 0, total: 0, usedPercentage: 0, itemCount: 0 });
+  fileSystemState = signal<FileSystemStorageState>({ 
     isSupported: false, 
     isEnabled: false, 
     directoryHandle: null, 
@@ -60,7 +63,8 @@ export class HistoryPanelComponent {  @Output() historyItemSelected = new EventE
 
   showFolderPath = computed(() => {
     return this.fileSystemState().isEnabled && this.fileSystemState().selectedPath;
-  });  lockIconSrc = computed(() => {
+  });
+  lockIconSrc = computed(() => {
     return this.fileSystemState().isEnabled 
       ? 'assets/icons/outline/archive.svg'  // Unlocked/open storage
       : 'assets/icons/outline/bookmark.svg'; // Locked/limited storage
@@ -79,7 +83,8 @@ export class HistoryPanelComponent {  @Output() historyItemSelected = new EventE
   canClickLock = computed(() => {
     return this.fileSystemState().isSupported;
   });
-  constructor(private historyService: IntegratedHistoryStorageService) {
+  constructor(private historyService: IntegratedHistoryStorageService,
+              public playbackService: PlaybackService) {
     // Subscribe to history changes
     this.historyService.history$.subscribe(history => {
       this.history.set(history);
@@ -88,7 +93,8 @@ export class HistoryPanelComponent {  @Output() historyItemSelected = new EventE
     // Subscribe to storage info changes
     this.historyService.storageInfo$.subscribe(storageInfo => {
       this.storageInfo.set(storageInfo);
-    });    // Subscribe to file system state changes
+    });
+    // Subscribe to file system state changes
     this.historyService.fileSystemState$.subscribe(state => {
       this.fileSystemState.set(state);
     });
@@ -103,9 +109,15 @@ export class HistoryPanelComponent {  @Output() historyItemSelected = new EventE
   selectItem(item: HistoryItem): void {
     this.selectedItemId.set(item.id);
     this.historyItemSelected.emit(item);
+    if (this.playbackService.playingItemId() !== item.id) {
+      this.playbackService.stop();
+    }
   }
   async deleteItem(item: HistoryItem, event: Event): Promise<void> {
     event.stopPropagation();
+    if (this.playbackService.playingItemId() === item.id) {
+        this.playbackService.stop();
+    }
     this.itemToDelete.set(item);
     this.showDeleteModal.set(true);
   }
@@ -182,7 +194,8 @@ export class HistoryPanelComponent {  @Output() historyItemSelected = new EventE
       case 'aws': return 'package';
       default: return 'microphone';
     }
-  }  getVoiceIcon(voice: string): string {
+  }
+  getVoiceIcon(voice: string): string {
     // For OpenAI voices, use actual icon names
     const openAIVoiceIcons: Record<string, string> = {
       'alloy': 'ghost-3',      
@@ -215,26 +228,6 @@ export class HistoryPanelComponent {  @Output() historyItemSelected = new EventE
       return parts.length > 1 ? parts[0].toUpperCase() : voice.substring(0, 3).toUpperCase();
     }
     return voice;
-  }
-
-  async playHistoryItem(item: HistoryItem, event: Event): Promise<void> {
-    event.stopPropagation();
-    
-    if (!item.result.audioData) return;
-
-    try {
-      const blob = new Blob([item.result.audioData], { type: 'audio/mpeg' });
-      const audioUrl = URL.createObjectURL(blob);
-      const audio = new Audio(audioUrl);
-      
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-      };
-      
-      await audio.play();
-    } catch (error) {
-      console.error('Failed to play audio:', error);
-    }
   }
 
   async downloadHistoryItem(item: HistoryItem, event: Event): Promise<void> {

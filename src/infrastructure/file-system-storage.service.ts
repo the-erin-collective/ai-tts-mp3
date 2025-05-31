@@ -284,16 +284,12 @@ export class FileSystemStorageService {
     }
 
     const audioSize = result.audioData.byteLength;
-    const itemId = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
 
     // Create the history item
     const historyItem: HistoryItem = {
-      id: itemId,
+      id: `${Date.now()}-${Math.random().toString(36).substring(2)}`,
       text: text,
-      settings: {
-        ...settings,
-        apiKey: undefined, // Remove the API key before saving
-      },
+      settings: this.sanitizeSettings(settings),
       result: {
         queryId: result.queryId,
         status: result.status,
@@ -446,15 +442,15 @@ export class FileSystemStorageService {
   private saveToLocalStorage(history: HistoryItem[]): void {
     if (!this.isBrowser) return;
 
-    const key = this.STORAGE_KEY;
-    const serializable = history.map(item => ({      id:        item.id,
-      text:      item.text,
-      settings:  { ...item.settings, apiKey: undefined },  // Don't store API key
-      queryId:   item.result.queryId.toString(),     // ← use toString()
-      status:    item.result.status,
+    const key = this.STORAGE_KEY;    const serializable = history.map(item => ({
+      id: item.id,
+      text: item.text,
+      settings: this.sanitizeSettings(item.settings),
+      queryId: item.result.queryId.toString(),
+      status: item.result.status,
       audioData: Array.from(item.result.audioData!),
       timestamp: item.result.createdAt.toISOString(),
-      title:     item.metadata?.title ?? null,
+      title: item.metadata?.title ?? null,
       duration: item.result.duration
     }));
     console.debug('[TTS] saving history to localStorage:', serializable);
@@ -648,6 +644,7 @@ export class FileSystemStorageService {
         audioSize: number;        metadata?: { title?: string; tags?: string[]; duration?: number };
       }      const history = (parsed as SerializedHistoryItem[]).map((item) => ({
         ...item,
+        settings: this.sanitizeSettings(item.settings),
         createdAt: new Date(item.createdAt),
         result: {
           ...item.result,
@@ -843,5 +840,35 @@ export class FileSystemStorageService {
     } catch (error) {
       console.error('Failed to save folder state:', error);
     }
+  }
+
+  private sanitizeSettings(settings: TTSSettings): TTSSettings {
+    // Create a new settings object without the API key
+    return {
+      provider: settings.provider,
+      model: settings.model,
+      voice: settings.voice
+    };
+  }
+
+  // Use this method when adding to history
+  private createHistoryItem(text: string, settings: TTSSettings, result: TTSResult, metadata?: { title?: string; tags?: string[]; duration?: number }): HistoryItem {
+    const itemId = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
+    return {
+      id: itemId,
+      text: text,
+      settings: this.sanitizeSettings(settings),
+      result: {
+        queryId: result.queryId,
+        status: result.status,
+        audioData: result.audioData,
+        createdAt: result.createdAt,
+        updatedAt: result.updatedAt,
+        duration: result.duration
+      },
+      createdAt: new Date(),
+      audioSize: result.audioData?.length || 0,
+      metadata: metadata,
+    };
   }
 }

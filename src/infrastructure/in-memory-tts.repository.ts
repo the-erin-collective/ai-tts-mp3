@@ -176,17 +176,16 @@ export class LocalStorageTTSSettingsRepository extends TTSSettingsRepository {
         return;
       }
       
-      // Serialize settings for storage
+      // Serialize settings for storage - don't include API key
       const storageData = {
         provider: settings.provider,
         model: settings.model,
-        voice: settings.voice,
-        apiKey: settings.apiKey?.getValue() // Store actual API key value if present
+        voice: settings.voice
       };
 
       localStorage.setItem(this.SETTINGS_KEY, JSON.stringify(storageData));
       Logger.info('TTS settings saved to local storage');
-    } catch (error) {
+    } catch (error: unknown) {
       Logger.error('Failed to save TTS settings to local storage', error as Error);
       throw error;
     }
@@ -212,13 +211,12 @@ export class LocalStorageTTSSettingsRepository extends TTSSettingsRepository {
       const settings: TTSSettings = {
         provider: data.provider,
         model: data.model,
-        voice: data.voice,
-        apiKey: data.apiKey ? new ApiKey(data.apiKey) : undefined
+        voice: data.voice
       };
 
       Logger.info('TTS settings loaded from local storage', { provider: settings.provider });
       return settings;
-    } catch (error) {
+    } catch (error: unknown) {
       Logger.error('Failed to load TTS settings from local storage', error as Error);
       return null;
     }
@@ -236,7 +234,7 @@ export class LocalStorageTTSSettingsRepository extends TTSSettingsRepository {
       
       localStorage.removeItem(this.SETTINGS_KEY);
       Logger.info('TTS settings cleared from local storage');
-    } catch (error) {
+    } catch (error: unknown) {
       Logger.error('Failed to clear TTS settings from local storage', error as Error);
       throw error;
     }

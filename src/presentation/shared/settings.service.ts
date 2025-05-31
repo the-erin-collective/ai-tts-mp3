@@ -73,13 +73,11 @@ export class SettingsService {
     
     this.saveSettings();
   }
-
   private saveSettings() {
     const settings = {
       provider: this.selectedProvider(),
       model: this.selectedModel(),
       voice: this.selectedVoice(),
-      apiKey: this.apiKey(),
       saveToHistory: this.saveToHistory()
     };
     if (this.isBrowser) {
@@ -94,11 +92,9 @@ export class SettingsService {
         saved = localStorage.getItem('tts_settings');
       }
       if (saved) {
-        const settings = JSON.parse(saved);
-        this.selectedProvider.set(settings.provider || ModelProvider.OPENAI);
+        const settings = JSON.parse(saved);        this.selectedProvider.set(settings.provider || ModelProvider.OPENAI);
         this.selectedModel.set(settings.model || 'tts-1');
         this.selectedVoice.set(settings.voice || Voice.ALLOY);
-        this.apiKey.set(settings.apiKey || '');
         this.saveToHistory.set(settings.saveToHistory ?? true);
       }
     } catch (error) {
@@ -123,8 +119,8 @@ export class SettingsService {
   }
 
   updateApiKey(apiKey: string) {
+    // Set the API key in memory only, do not save to storage
     this.apiKey.set(apiKey);
-    this.saveSettings();
   }
 
   updateSaveToHistory(saveToHistory: boolean) {

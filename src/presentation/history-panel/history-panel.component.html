@@ -170,7 +170,7 @@
                 </div>
                   <div class="item-actions">                <button 
                   class="item-action-btn play-btn" 
-                  (click)="playbackService.togglePlayPause(item)"
+                  (click)="onHistoryItemPlayPauseClick(item, $event)"
                   [title]="playbackService.playingItemId() === item.id && playbackService.isPlaying() ? 'Pause audio' : 'Play audio'">
                   <img [src]="playbackService.playingItemId() === item.id && playbackService.isPlaying() ? 'assets/icons/outline/player-pause.svg' : 'assets/icons/outline/player-play.svg'" 
                        width="14" height="14" class="action-icon" 

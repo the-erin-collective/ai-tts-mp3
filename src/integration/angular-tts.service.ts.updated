@@ -1,0 +1,251 @@
+import { Injectable, PLATFORM_ID, Inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { TTSApplicationService } from '../enactment/tts-application.service';
+import { 
+  TTSDomainService 
+} from '../domain/tts.repository';
+import { TTSRepositoryFactory } from '../infrastructure/repositories/repository.factory';
+import { TTSSettings, TTSResult, ModelProvider, QueryId } from '../domain/tts.entity';
+import { ProviderConfigurationService } from './provider-configuration.service';
+import { ErrorHandlingService, ErrorContext } from './error-handling.service';
+import { LoggingService } from './logging.service';
+import { MonitoringService } from './monitoring.service';
+import { TTSProviderFactory } from './providers/tts-provider.factory';
+import { Result } from '../common/result';
+import { Logger } from '../common/utils';
+
+// Integration layer - Dependency Injection configuration
+@Injectable({
+  providedIn: 'root'
+})
+export class TTSServiceFactory {
+  private static ttsApplicationService: TTSApplicationService | null = null;
+  
+  static createTTSApplicationService(providerFactory: TTSProviderFactory): TTSApplicationService {
+    if (!this.ttsApplicationService) {
+      Logger.info('Initializing TTS Application Service with refactored architecture');
+      
+      // Initialize repositories using factory
+      const repositoryFactory = new TTSRepositoryFactory();
+      const repositories = repositoryFactory.createRepositorySet();
+      
+      // Initialize domain service
+      const domainService = new TTSDomainService(repositories.queryRepository, repositories.resultRepository);
+      
+      // Get TTS provider using integration layer factory (defaults to OpenAI)
+      const providerResult = providerFactory.getProvider(ModelProvider.OPENAI);
+      if (providerResult.isFailure()) {
+        throw new Error(`Failed to initialize TTS provider: ${providerResult.getError()}`);
+      }
+      
+      const ttsProvider = providerResult.getValue();
+        this.ttsApplicationService = new TTSApplicationService(
+        repositories.queryRepository,
+        repositories.resultRepository,
+        repositories.settingsRepository,
+        domainService,
+        {
+          generateSpeech: async (text: string, settings: TTSSettings): Promise<Uint8Array> => {
+            const queryId = QueryId.generate();
+            const result = await ttsProvider.synthesizeSpeech(text, settings, queryId);
+            if (result.isFailure()) {
+              throw new Error(result.getError());
+            }
+            return result.getValue().audioData || new Uint8Array();
+          }
+        }
+      );
+      
+      Logger.info('TTS Application Service initialized successfully');
+    }
+    return this.ttsApplicationService;
+  }
+
+  static resetService(): void {
+    Logger.info('Resetting TTS Application Service');
+    this.ttsApplicationService = null;
+  }
+}
+
+// Angular service wrapper for the TTS application service
+@Injectable({
+  providedIn: 'root'
+})
+export class AngularTTSService {
+  private readonly ttsApplicationService: TTSApplicationService | null = null;
+  private readonly isBrowser: boolean;
+  
+  constructor(
+    @Inject(PLATFORM_ID) private platformId: Object,
+    private readonly providerConfig: ProviderConfigurationService,
+    private readonly errorHandler: ErrorHandlingService,
+    private readonly logging: LoggingService,
+    private readonly monitoring: MonitoringService,
+    private readonly providerFactory: TTSProviderFactory
+  ) {
+    this.isBrowser = isPlatformBrowser(this.platformId);
+    
+    if (this.isBrowser) {
+      try {
+        this.ttsApplicationService = TTSServiceFactory.createTTSApplicationService(this.providerFactory);
+        this.logging.info('AngularTTSService initialized with provider factory', 'TTSService');
+      } catch (error) {
+        this.logging.error('Failed to initialize TTSApplicationService', error as Error);
+      }
+    } else {
+      this.logging.info('AngularTTSService running in SSR mode - API functionality disabled', 'TTSService');
+    }
+  }
+
+  // SSR-safe method to check if the service can perform API operations
+  private canPerformOperations(): boolean {
+    return this.isBrowser && this.ttsApplicationService !== null;
+  }
+
+  // TTS Query operations with enhanced error handling
+  async createTTSQuery(
+    text: string, 
+    settings: TTSSettings,
+    metadata?: { title?: string; tags?: string[] }
+  ) {
+    const startTime = Date.now();
+    const context: ErrorContext = {
+      component: 'AngularTTSService',
+      operation: 'createTTSQuery',
+      metadata: { textLength: text.length, provider: settings.provider }
+    };
+
+    // Skip if in SSR mode
+    if (!this.canPerformOperations()) {
+      return Result.failure('Service not available in server-side rendering');
+    }
+
+    return this.logging.trackPerformance(
+      'createTTSQuery',
+      async () => {
+        try {
+          this.logging.info('Creating TTS query', 'TTSService', { 
+            textLength: text.length, 
+            provider: settings.provider 
+          });
+
+          // Validate request before processing
+          const validation = await this.validateTTSRequest(text, settings);
+          if (!validation.isSuccess) {
+            this.monitoring.recordRequest(settings.provider, false, Date.now() - startTime);
+            return this.errorHandler.handleValidationError(
+              validation.getError(),
+              { text, settings },
+              context
+            );
+          }
+
+          const result = await this.ttsApplicationService!.createTTSQuery(text, settings, metadata);
+          
+          if (!result.isSuccess) {
+            this.monitoring.recordRequest(settings.provider, false, Date.now() - startTime);
+            return this.errorHandler.handleSystemError(
+              new Error(result.getError()),
+              context
+            );
+          }
+
+          this.monitoring.recordRequest(settings.provider, true, Date.now() - startTime);
+          this.logging.info('TTS query created successfully', 'TTSService', { 
+            queryId: result.getValue().id.getValue(),
+            textLength: text.length 
+          });
+          
+          return result;
+        } catch (error) {
+          this.monitoring.recordRequest(settings.provider, false, Date.now() - startTime);
+          return this.errorHandler.handleSystemError(error as Error, context);
+        }
+      },
+      'TTSService'
+    );
+  }
+
+  async validateTTSRequest(text: string, settings: TTSSettings): Promise<Result<boolean, string>> {
+    if (!this.canPerformOperations()) {
+      return Result.failure('Service not available in server-side rendering');
+    }
+
+    try {
+      if (!text || text.trim().length === 0) {
+        return Result.failure('Text is required');
+      }
+
+      if (!settings.apiKey || settings.apiKey.getValue().trim().length === 0) {
+        return Result.failure('API key is required');
+      }
+      
+      // Additional validation logic
+      return Result.success(true);
+    } catch (error) {
+      this.logging.error('Validation error', error as Error);
+      return Result.failure('Validation failed');
+    }
+  }
+
+  async generateSpeech(text: string, settings: TTSSettings): Promise<TTSResult | null> {
+    if (!this.canPerformOperations()) {
+      this.logging.warn('Speech generation skipped in server-side rendering', 'TTSService');
+      return null;
+    }
+
+    try {
+      const startTime = Date.now();
+      this.logging.info('Generating speech', 'TTSService', { 
+        textLength: text.length, 
+        provider: settings.provider 
+      });
+
+      const queryResult = await this.createTTSQuery(text, settings);
+      if (queryResult.isFailure()) {
+        throw new Error(queryResult.getError());
+      }
+      
+      const query = queryResult.getValue();
+      const result = await this.ttsApplicationService!.generateSpeech(query.id);
+      
+      if (result.isFailure()) {
+        throw new Error(result.getError());
+      }
+      
+      this.logging.info('Speech generated successfully', 'TTSService', {
+        queryId: query.id.getValue(),
+        duration: Date.now() - startTime
+      });
+      
+      return result.getValue();
+    } catch (error) {
+      this.logging.error('Error generating speech', error as Error);
+      return null;
+    }
+  }
+
+  async deleteQuery(queryId: QueryId): Promise<Result<boolean, string>> {
+    if (!this.canPerformOperations()) {
+      return Result.failure('Service not available in server-side rendering');
+    }
+    
+    return this.ttsApplicationService!.deleteQuery(queryId);
+  }
+  
+  async saveSettings(settings: TTSSettings): Promise<Result<boolean, string>> {
+    if (!this.canPerformOperations()) {
+      return Result.failure('Service not available in server-side rendering');
+    }
+    
+    return this.ttsApplicationService!.saveSettings(settings);
+  }
+  
+  async loadSettings(): Promise<Result<TTSSettings, string>> {
+    if (!this.canPerformOperations()) {
+      return Result.failure('Service not available in server-side rendering');
+    }
+    
+    return this.ttsApplicationService!.loadSettings();
+  }
+}

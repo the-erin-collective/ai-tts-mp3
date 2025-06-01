@@ -9,6 +9,7 @@ import { AngularTTSService } from '../../integration/angular-tts.service';
 import { SettingsService } from '../shared/settings.service';
 import { HistoryItem } from '../../integration/history-storage.service';
 import { ModelProvider, Voice } from '../../integration/domain-types';
+import { ChangeDetectorRef } from '@angular/core';
 
 // Define a type for currentQueryInfo
 interface CurrentQueryInfo {
@@ -18,6 +19,7 @@ interface CurrentQueryInfo {
   estimatedDuration?: number;
   createdAt?: Date;
   id?: string;
+  audioSize?: number;
 }
 
 @Component({
@@ -32,6 +34,7 @@ export class AudioPlayerComponent implements OnDestroy {
   private ttsService = inject(AngularTTSService);
   protected settingsService = inject(SettingsService);
   public playbackService = inject(PlaybackService);
+  private cdr = inject(ChangeDetectorRef);
 
   // Input signal for the current query information
   @Input() currentQueryInfo = signal<CurrentQueryInfo | null>(null);
@@ -89,12 +92,15 @@ export class AudioPlayerComponent implements OnDestroy {
 
   displaySize = computed(() => {
     const result = this.currentResult();
+    const queryInfo = this.currentQueryInfo(); // Get currentQueryInfo
     let bytes = 0;
     
-    // Try to get file size from the TTSResult
+    // Try to get file size from the TTSResult, fall back to audioSize from HistoryItem
     if (result?.fileSize) {
       bytes = result.fileSize;
-    } 
+    } else if (queryInfo?.audioSize) {
+      bytes = queryInfo.audioSize;
+    }
     
     // If we still don't have file size, check the status
     if (bytes === 0) {
@@ -116,13 +122,32 @@ export class AudioPlayerComponent implements OnDestroy {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   });
 
-  // Effect to react to changes in currentQueryInfo and potentially trigger playback
-  // Note: Actual playback initiation is now handled by PlaybackService, often triggered by user action (clicking play)
-  // This effect might be used for other state updates in the AudioPlayerComponent based on the selected item.
-  private queryInfoEffect = effect(() => {    this.currentQueryInfo();
+  // Add a log for duration specifically
+  displayDuration = computed(() => {
+    const result = this.currentResult(); // Get the full currentResult object
+    const duration = result?.duration;
+    return duration; // The formatting pipe will handle display
+  });
+
+  // Effect to react to changes in currentQueryInfo
+  private queryInfoEffect = effect(() => {
+    const info = this.currentQueryInfo();
     // Effect runs to track changes in currentQueryInfo
     // Playback is handled by user interaction through the play button
-  });  ngOnDestroy(): void {
+  });
+
+  // Effect to specifically log currentResult changes
+  private currentResultEffect = effect(() => {
+    const result = this.currentResult();
+    if (result?.duration !== undefined) {
+      // console.log('[AudioPlayer] currentResultEffect - Duration found!', result.duration);
+    }
+    if (result?.fileSize !== undefined) {
+      // console.log('[AudioPlayer] currentResultEffect - File size found!', result.fileSize);
+    }
+  });
+
+  ngOnDestroy(): void {
     this.playbackService.stop();
   }
 
@@ -225,10 +250,24 @@ export class AudioPlayerComponent implements OnDestroy {
     }
 
     // Handle play/pause click
-    onPlayPauseClick(): void {
-      const historyItem = this.constructHistoryItem();
-      if (historyItem) {
-        this.playbackService.togglePlayPause(historyItem);
+    async onPlayPauseClick(): Promise<void> {
+      console.log('[AudioPlayer] onPlayPauseClick called');
+      const result = this.currentResult();
+      const queryInfo = this.currentQueryInfo(); // Get queryInfo
+      const itemId = queryInfo?.id; // Get item ID from queryInfo
+
+      console.log('[AudioPlayer] onPlayPauseClick: currentResult =', result); // Added log for currentResult
+      console.log('[AudioPlayer] onPlayPauseClick: currentQueryInfo =', queryInfo); // Added log for currentQueryInfo
+      console.log('[AudioPlayer] onPlayPauseClick: itemId =', itemId); // Added log for itemId
+
+      if (result) { // Ensure there's a result before attempting to toggle playback
+         // The togglePlayPause method in PlaybackService now handles loading and playing
+         // based on the current state and the provided item ID.
+         await this.playbackService.togglePlayPause(result, itemId); // Pass result and itemId
+         // Manually trigger change detection to ensure the play/pause button updates
+         this.cdr.detectChanges();
+      } else {
+         console.warn('[AudioPlayer] onPlayPauseClick: Cannot toggle playback, currentResult is null.');
       }
     }
   }

@@ -52,7 +52,10 @@
   </div>
   
   <!-- History Panel -->
-  <app-history-panel (historyItemSelected)="onHistoryItemSelected($event)"></app-history-panel>
+  <app-history-panel
+    (historyItemSelected)="onHistoryItemSelected($event)"
+    (playItem)="onHistoryPanelPlayItem($event)"
+  ></app-history-panel>
 </div>
 
 <!-- Removal Preview Modal -->

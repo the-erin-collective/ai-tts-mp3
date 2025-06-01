@@ -92,10 +92,12 @@ export class SettingsService {
         saved = localStorage.getItem('tts_settings');
       }
       if (saved) {
-        const settings = JSON.parse(saved);        this.selectedProvider.set(settings.provider || ModelProvider.OPENAI);
+        const settings = JSON.parse(saved);
+        this.selectedProvider.set(settings.provider || ModelProvider.OPENAI);
         this.selectedModel.set(settings.model || 'tts-1');
         this.selectedVoice.set(settings.voice || Voice.ALLOY);
-        this.saveToHistory.set(settings.saveToHistory ?? true);
+        const loadedSaveToHistory = settings.saveToHistory ?? true;
+        this.saveToHistory.set(loadedSaveToHistory);
       }
     } catch (error) {
       console.warn('Failed to load saved settings:', error);

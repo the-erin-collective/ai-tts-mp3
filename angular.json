@@ -22,13 +22,16 @@
       "architect": {
         "build": {
           "builder": "@angular-devkit/build-angular:application",
-          "options": {            "outputPath": "dist/ai-tts-mp3",            "index": "src/presentation/index.html",
+          "options": {
+            "outputPath": "dist/ai-tts-mp3",
+            "index": "src/presentation/index.html",
             "browser": "src/integration/bootstrap/main.ts",
             "polyfills": [
               "zone.js"
             ],
             "tsConfig": "tsconfig.app.json",
-            "inlineStyleLanguage": "scss",            "assets": [
+            "inlineStyleLanguage": "scss",
+            "assets": [
               {
                 "glob": "**/*",
                 "input": "src/presentation/assets",
@@ -38,20 +41,21 @@
                 "glob": "**/*",
                 "input": "public"
               }
-            ],"styles": [
+            ],
+            "styles": [
               "src/presentation/styles.scss"
             ],
             "scripts": [],
             "server": "src/integration/bootstrap/main.server.ts",
             "prerender": true,
             "ssr": {
-              "entry": "server.ts"
+              "entry": "src/integration/bootstrap/main.server.ts"
             }
           },          "configurations": {            "production": {
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
+                  "maximumWarning": "800kB",
                   "maximumError": "1MB"
                 },
                 {
@@ -65,7 +69,7 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
+                  "maximumWarning": "800kB",
                   "maximumError": "1MB"
                 },
                 {

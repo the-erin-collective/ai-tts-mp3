@@ -338,27 +338,31 @@
 
 // History Item
 .history-item {
-  background: #0d1117;
-  border: 1px solid #21262d;
-  border-radius: 8px;
-  padding: 0.75rem;
-  margin-bottom: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #21262d;
   cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
-}
+  transition: background-color 0.2s ease;
+  outline: none; /* Remove default focus outline */
 
-.history-item:hover {
-  background: #161b22;
-  border-color: #30363d;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-}
+  &:last-child {
+    border-bottom: none;
+  }
 
-.history-item.selected {
-  border-color: #1f6feb;
-  background: rgba(31, 111, 235, 0.1);
-  box-shadow: 0 0 0 1px rgba(31, 111, 235, 0.3);
+  &:hover {
+    background-color: #161b22; // Slightly darker background on hover
+  }
+
+  &:focus-visible { /* Style for keyboard focus */
+    background-color: #161b22; // Use the same hover style for focus
+    box-shadow: inset 2px 0 0 0 #1f6feb; // Add a left border on focus
+  }
+
+  &.selected {
+    border: 1px solid #1f6feb; // Blue border
+    background-color: #161b22; // Darker background for selection
+  }
 }
 
 // Item Header

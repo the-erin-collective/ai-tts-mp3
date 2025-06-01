@@ -53,8 +53,12 @@ export class PlaybackService implements OnDestroy {
       };
 
       // Update playing state
-      this.audio.onplay = () => this._isPlaying.set(true);
-      this.audio.onpause = () => this._isPlaying.set(false);
+      this.audio.onplay = () => {
+        this._isPlaying.set(true);
+      };
+      this.audio.onpause = () => {
+        this._isPlaying.set(false);
+      };
     }
   }
 
@@ -100,13 +104,30 @@ export class PlaybackService implements OnDestroy {
       this._hasEnded.set(false);
       this._playingItemId.set(itemId || null);
 
-      // Wait for audio to be loaded
-      const onCanPlay = () => {
-        this.audio!.removeEventListener('canplay', onCanPlay);
+      // Wait for audio to be fully loaded and metadata available
+      const onReady = () => {
+        if (!this.audio) { // Should not happen with outer check, but for safety
+            reject(new Error('Audio element not available during loading'));
+            return;
+        }
+        this.audio.removeEventListener('canplaythrough', onReady);
+        this.audio.removeEventListener('loadedmetadata', onReady);
         resolve();
       };
-      this.audio.addEventListener('canplay', onCanPlay);      const onError = () => {
-        this.audio!.removeEventListener('error', onError);
+
+      // Add listeners for successful loading states
+      this.audio.addEventListener('canplaythrough', onReady);
+      this.audio.addEventListener('loadedmetadata', onReady);
+
+      const onError = () => {
+        if (!this.audio) { // Should not happen
+            reject(new Error('Audio element not available during error handling'));
+            return;
+        }
+        this.audio.removeEventListener('canplaythrough', onReady);
+        this.audio.removeEventListener('loadedmetadata', onReady);
+        this.audio.removeEventListener('error', onError);
+
         if (this.currentAudioUrl) {
           URL.revokeObjectURL(this.currentAudioUrl);
           this.currentAudioUrl = null;
@@ -174,6 +195,10 @@ export class PlaybackService implements OnDestroy {
    * Toggles play/pause for a specific TTS result or HistoryItem.
    */  
   async togglePlayPause(itemOrResult?: HistoryItem | TTSResult | null, itemId?: string): Promise<void> {
+    // Log the call stack if itemId is undefined
+    if (itemId === undefined) {
+      // Keep this trace for debugging unexpected undefined itemIds
+    }
     let result: TTSResult | null = null;
     let currentItemId = itemId;
 
@@ -202,30 +227,45 @@ export class PlaybackService implements OnDestroy {
       return;
     }
 
-    // Check if we're dealing with the same audio content by comparing the actual data
-    const isSameAudio = this.currentAudioData === result.audioData;
+    // If the item ID is different from the currently playing item ID, load the new audio
+    if (this._playingItemId() !== currentItemId) {
+      // loadAudio handles creating Blob URL, setting src, and setting _playingItemId
+      await this.loadAudio(result, currentItemId); 
+    }
 
-    if (isSameAudio) {
-      // This is the same audio content we already have loaded
-      if (this._hasEnded()) {
-        this.audio.currentTime = 0;
-        this._hasEnded.set(false);
+    // Now that the correct audio is loaded (or confirmed to be loaded), play it
+    try {
+      // Wait for the audio to be ready before playing
+      if (this.audio && this.audio.readyState < HTMLMediaElement.HAVE_ENOUGH_DATA) {
+        await new Promise<void>((resolve, reject) => {
+          if (!this.audio) { reject('Audio element not available during readyState wait'); return; }
+          const onReady = () => {
+            this.audio?.removeEventListener('canplaythrough', onReady);
+            this.audio?.removeEventListener('loadedmetadata', onReady); // Also listen for this, though canplaythrough is usually sufficient
+            resolve();
+          };
+          const onError = (e: any) => { // Use any for error event
+               console.error('togglePlayPause: Error waiting for audio readyState', e);
+               this.audio?.removeEventListener('canplaythrough', onReady);
+               this.audio?.removeEventListener('loadedmetadata', onReady);
+               this.audio?.removeEventListener('error', onError);
+               reject(e);
+          };
+          this.audio.addEventListener('canplaythrough', onReady);
+          this.audio.addEventListener('loadedmetadata', onReady);
+          this.audio.addEventListener('error', onError);
+        });
       }
-      try {
+
+      if (this.audio) {
         await this.audio.play();
-      } catch (error) {
-        console.error('Error resuming audio:', error);
-        this._isPlaying.set(false);
+        // Ensure playingItemId is set after successful play
+        this._playingItemId.set(currentItemId || null);
       }
-    } else {
-      // This is different audio content, load and play it
-      await this.loadAudio(result, currentItemId);
-      try {
-        await this.audio.play();
-      } catch (error) {
-        console.error('Error playing audio:', error);
-        this._isPlaying.set(false);
-      }
+
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      this._isPlaying.set(false);
     }
   }
 
@@ -258,7 +298,10 @@ export class PlaybackService implements OnDestroy {
    * Seeks to a specific percentage of the audio duration.
    * @param percentage Number between 0 and 100
    */  async seekToPercentage(percentage: number, shouldPlay?: boolean): Promise<void> {
-    if (!isPlatformBrowser(this.platformId) || !this.audio) return;
+    if (!isPlatformBrowser(this.platformId) || !this.audio || this.audio.readyState < 1) { // Check readyState
+      console.warn('Seek failed: Audio not ready');
+      return;
+    }
     
     // Clamp percentage to valid range
     const clampedPercentage = Math.min(Math.max(0, percentage), 100);
@@ -314,6 +357,18 @@ export class PlaybackService implements OnDestroy {
       } catch (error) {
         console.error('Error resuming after seek:', error);
       }
+    }
+  }
+
+  /**
+   * Resumes playback of the currently loaded audio.
+   */
+  play(): void {
+    if (isPlatformBrowser(this.platformId) && this.audio) {
+      this.audio.play().then(() => {
+      }).catch(error => {
+        console.error('[PlaybackService] this.audio.play() failed:', error);
+      });
     }
   }
 

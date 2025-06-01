@@ -1,131 +1,92 @@
-// filepath: d:\dev\github\ai-tts-mp3\src\integration\angular-tts.service.ts
-import { Injectable } from '@angular/core';
-import { TTSApplicationService } from '../enactment/tts-application.service';
-import { 
-  TTSQueryRepository, 
-  TTSResultRepository, 
-  TTSSettingsRepository, 
-  TTSDomainService 
-} from '../domain/tts.repository';
-import { 
-  InMemoryTTSQueryRepository, 
-  InMemoryTTSResultRepository, 
-  LocalStorageTTSSettingsRepository 
-} from '../infrastructure/in-memory-tts.repository';
-import { OpenAITTSProviderService } from '../infrastructure/openai-tts-provider.service';
-import { TTSSettings, TTSResult } from '../domain/tts.entity';
+import { Injectable, inject } from '@angular/core';
+import { TTSResult, TTSSettings } from './domain-types';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { QueryId, TTSResultStatus } from '../domain/tts.entity'; // Assuming QueryId and TTSResultStatus are in domain/tts.entity
 
-// Integration layer - Dependency Injection configuration
-@Injectable({
-  providedIn: 'root'
-})
-export class TTSServiceFactory {
-  private static ttsApplicationService: TTSApplicationService | null = null;
-  static createTTSApplicationService(): TTSApplicationService {
-    if (!this.ttsApplicationService) {
-      const queryRepository: TTSQueryRepository = new InMemoryTTSQueryRepository();
-      const resultRepository: TTSResultRepository = new InMemoryTTSResultRepository();
-      const settingsRepository: TTSSettingsRepository = new LocalStorageTTSSettingsRepository();
-      const domainService = new TTSDomainService(queryRepository, resultRepository);
-      const ttsProvider = new OpenAITTSProviderService();
-      
-      this.ttsApplicationService = new TTSApplicationService(
-        queryRepository,
-        resultRepository,
-        settingsRepository,
-        domainService,
-        ttsProvider
-      );
-    }
-    return this.ttsApplicationService;
-  }
-}
-
-// Angular service wrapper for the TTS application service
 @Injectable({
   providedIn: 'root'
 })
 export class AngularTTSService {
-  private readonly ttsApplicationService: TTSApplicationService;
 
-  constructor() {
-    this.ttsApplicationService = TTSServiceFactory.createTTSApplicationService();
+  private http = inject(HttpClient);
+
+  async downloadAudio(result: TTSResult): Promise<string | undefined> {
+    // Placeholder implementation - Audio playback is handled by AudioPlayerComponent
+    // This method might not be strictly necessary if audio is played directly from TTSResult
+    // If needed, implement logic to create a Blob URL or similar
+    return undefined;
   }
 
-  // TTS Query operations
-  async createTTSQuery(
-    text: string, 
-    settings: TTSSettings,
-    metadata?: { title?: string; tags?: string[] }
-  ) {
-    return this.ttsApplicationService.createTTSQuery(text, settings, metadata);
+  async saveSettings(settings: TTSSettings): Promise<void> {
+    // Placeholder implementation - Settings are currently managed by SettingsService
+    // This could be extended to save settings to localStorage or an API later.
   }
 
-  async processTTSQuery(queryId: string) {
-    return this.ttsApplicationService.processTTSQuery(queryId);
-  }
-
-  async getQueryResult(queryId: string) {
-    return this.ttsApplicationService.getQueryResult(queryId);
-  }
-
-  async getRecentQueries(limit?: number) {
-    return this.ttsApplicationService.getRecentQueries(limit);
-  }
-
-  async deleteQuery(queryId: string) {
-    return this.ttsApplicationService.deleteQuery(queryId);
-  }
-
-  // Settings operations
-  async saveSettings(settings: TTSSettings) {
-    return this.ttsApplicationService.saveSettings(settings);
-  }
-
-  async loadSettings() {
-    return this.ttsApplicationService.loadSettings();
-  }
-
-  // Utility methods for the presentation layer
-  async generateSpeech(text: string, settings: TTSSettings): Promise<TTSResult | null> {
-    const queryResult = await this.createTTSQuery(text, settings);
-    if (!queryResult.isSuccess) {
-      return null;
+  async generateSpeech(text: string, settings: TTSSettings): Promise<TTSResult | undefined> {
+    // Ensure API key is available
+    const apiKey = settings.apiKey?.getValue();
+    if (!apiKey) {
+      console.error('[TTS] API key is missing for speech generation.');
+      return undefined; // Or throw an error, depending on desired error handling flow
     }
 
-    const processResult = await this.processTTSQuery(queryResult.getValue().id.getValue());
-    if (!processResult.isSuccess) {
-      return null;
-    }
+    const url = 'https://api.openai.com/v1/audio/speech';
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    });
 
-    return processResult.getValue() || null;
+    const body = {
+      model: settings.model || 'tts-1-hd', // Use settings model, fallback to default
+      voice: settings.voice || 'shimmer', // Use settings voice, fallback to default
+      input: text,
+      response_format: 'mp3', // Request MP3 format
+    };
+
+    try {
+      // Use 'arraybuffer' to get the raw audio data
+      const audioBlob = await this.http.post(url, body, { headers, responseType: 'arraybuffer' }).toPromise();
+
+      if (audioBlob) {
+        // Convert ArrayBuffer to Uint8Array
+        const audioData = new Uint8Array(audioBlob);
+
+        const result: TTSResult = {
+          queryId: QueryId.generate(), // Generate a new QueryId for the result
+          status: 'completed' as TTSResultStatus,
+          audioData: audioData,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          duration: undefined, // Duration might need to be calculated or obtained from API if available
+          fileSize: audioData.length,
+          error: undefined,
+          processingTime: undefined, // Can calculate if needed
+        };
+        return result;
+      } else {
+        console.warn('[TTS] OpenAI API request returned no audio blob');
+        return undefined;
+      }
+    } catch (error: any) {
+      console.error('[TTS] Error calling OpenAI API:', error);
+      // Return undefined or a result with error status
+       return undefined;
+    }
   }
 
-  async downloadAudio(result: TTSResult): Promise<string | null> {
-    if (!result.audioData) {
-      return null;
-    }
-
-    // Create blob URL for download
-    const blob = new Blob([result.audioData], { type: 'audio/mpeg' });
-    return URL.createObjectURL(blob);
-  }
-  async playAudio(result: TTSResult): Promise<HTMLAudioElement | null> {
-    const audioUrl = await this.downloadAudio(result);
-    if (!audioUrl) {
-      return null;
-    }
-
-    const audio = new Audio(audioUrl);
-    return audio;
+  async loadSettings(): Promise<{ settings: TTSSettings } | undefined> {
+    // Placeholder implementation - Settings are currently managed by SettingsService
+    // Could be extended to load settings from localStorage or an API later.
+    // For now, return undefined to signify no saved settings are loaded by this service.
+    return undefined;
   }
 
-  // Cost estimation
-  estimateCost(textLength: number, model = 'tts-1'): number {
-    // OpenAI TTS pricing (as of 2024):
-    // tts-1: $0.015 per 1K characters
-    // tts-1-hd: $0.030 per 1K characters
-    const pricePerThousandChars = model === 'tts-1-hd' ? 0.030 : 0.015;
-    return (textLength / 1000) * pricePerThousandChars;
+  estimateCost(characterCount: number, settings: TTSSettings): number {
+    // Basic placeholder estimation for OpenAI. Prices can vary.
+    // As of late 2023, tts-1 is $0.015 / 1K chars, tts-1-hd is $0.03 / 1K chars.
+    // This is a very rough estimate.
+    const costPer1kChars = settings.model === 'tts-1-hd' ? 0.03 : 0.015;
+    const estimatedCost = (characterCount / 1000) * costPer1kChars;
+    return estimatedCost;
   }
 }

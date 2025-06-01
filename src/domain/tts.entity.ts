@@ -1,4 +1,9 @@
-// filepath: d:\dev\github\ai-tts-mp3\src\domain\tts.entity.ts
+// Domain entities and types for TTS functionality
+
+// Import value objects
+export { QueryId } from './value-objects/query-id';
+export { QueryText } from './value-objects/query-text';
+export { ApiKey } from './value-objects/api-key';
 
 // Enums for supported providers, models, and voices
 export enum ModelProvider {
@@ -33,75 +38,10 @@ export enum Voice {
   CLYDE = 'clyde'
 }
 
-// Value Objects
-export class ApiKey {
-  constructor(private readonly value: string) {
-    if (!value || value.trim().length === 0) {
-      throw new Error('API key cannot be empty');
-    }
-    if (value.length < 10) {
-      throw new Error('API key appears to be invalid (too short)');
-    }
-  }
-
-  getValue(): string {
-    return this.value;
-  }
-
-  getMasked(): string {
-    const visible = this.value.slice(0, 4);
-    const masked = '*'.repeat(Math.max(0, this.value.length - 8));
-    const ending = this.value.slice(-4);
-    return `${visible}${masked}${ending}`;
-  }
-
-  equals(other: ApiKey): boolean {
-    return this.value === other.value;
-  }
-}
-
-export class QueryText {
-  constructor(private readonly value: string) {
-    if (!value || value.trim().length === 0) {
-      throw new Error('Query text cannot be empty');
-    }
-    if (value.length > 4000) {
-      throw new Error('Query text cannot exceed 4000 characters');
-    }
-  }
-
-  getValue(): string {
-    return this.value;
-  }
-
-  getWordCount(): number {
-    return this.value.trim().split(/\s+/).length;
-  }
-
-  equals(other: QueryText): boolean {
-    return this.value === other.value;
-  }
-}
-
-export class QueryId {
-  constructor(private readonly value: string) {
-    if (!value || value.trim().length === 0) {
-      throw new Error('Query ID cannot be empty');
-    }
-  }
-
-  getValue(): string {
-    return this.value;
-  }
-
-  equals(other: QueryId): boolean {
-    return this.value === other.value;
-  }
-
-  static generate(): QueryId {
-    return new QueryId(crypto.randomUUID());
-  }
-}
+// Import types for re-export
+import type { QueryId } from './value-objects/query-id';
+import type { QueryText } from './value-objects/query-text';
+import type { ApiKey } from './value-objects/api-key';
 
 // Domain Entities
 export interface TTSSettings {

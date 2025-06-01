@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AngularTTSService } from '../../integration/angular-tts.service';
 import { SettingsService } from '../shared/settings.service';
-import { TTSResult, TTSResultStatus } from '../../integration/domain-types';
+import { TTSResult, TTSResultStatus, TTSSettings, ApiKey } from '../../integration/domain-types';
 
 
 @Component({
@@ -29,9 +29,14 @@ export class EditorComponent {  // Inject services
 
   // Computed properties
   canGenerate = computed(() => {
-    return this.inputText().trim().length > 0 &&
-           this.settingsService.apiKey().trim().length > 0 && 
-           !this.isProcessing();
+    const isProcessing = this.isProcessing();
+    const inputTextLength = this.inputText().trim().length;
+    const apiKeyLength = this.settingsService.apiKey().trim().length;
+    const result = inputTextLength > 0 &&
+           apiKeyLength > 0 && 
+           !isProcessing;
+           
+    return result;
   });
   statusMessage = computed(() => {
     const result = this.currentResult();
@@ -61,19 +66,21 @@ export class EditorComponent {  // Inject services
     // but for display purposes, we'll use word count as it's more meaningful
     return text.trim().split(/\s+/).length;
   });
-
   estimatedCost = computed(() => {
     const text = this.inputText();
     if (!text.trim()) return '~$0.00000 est.';
     const characterCount = text.length;
-    const selectedModel = this.settingsService.selectedModel();
     const provider = this.settingsService.selectedProvider();
-    let cost: number;
-    if (provider === 'openai') {
-      cost = this.ttsService.estimateCost(characterCount, selectedModel);
-    } else {
-      cost = characterCount * 0.000015;
-    }
+    
+    // Create a settings object for cost estimation
+    const settings: TTSSettings = {
+      provider: provider,
+      model: this.settingsService.selectedModel(),
+      voice: this.settingsService.selectedVoice(),
+      apiKey: this.settingsService.apiKey() ? ApiKey.fromString(this.settingsService.apiKey()) : undefined
+    };
+    
+    const cost = this.ttsService.estimateCost(characterCount, settings);
     // Always show 5 decimal places, no duplicate $
     return `~$${Number(cost).toFixed(5)} est.`;
   });

@@ -35,13 +35,11 @@ export class TTSApplicationService {
     metadata?: { title?: string; tags?: string[] }
   ): Promise<Result<TTSQuery, string>> {
     try {
-      Logger.info('Creating TTS query', { textLength: text.length, provider: settings.provider });
-
-      // Validate settings using domain service
+      Logger.info('Creating TTS query', { textLength: text.length, provider: settings.provider });      // Validate settings using domain service
       this.domainService.validateSettings(settings);
-
+      
       // Create value objects
-      const queryText = new QueryText(text);
+      const queryText = QueryText.fromString(text);
       const queryId = QueryId.generate();
 
       // Check if query can be processed
@@ -95,7 +93,7 @@ export class TTSApplicationService {
     try {
       Logger.info('Processing TTS query', { queryId });
 
-      const query = await this.queryRepository.findById(new QueryId(queryId));
+      const query = await this.queryRepository.findById(QueryId.fromString(queryId));
       if (!query) {
         return Result.failure('Query not found');
       }      // Update status to processing
@@ -146,7 +144,7 @@ export class TTSApplicationService {
       
       // Update result with error
       await this.resultRepository.updateWithError(
-        new QueryId(queryId),
+        QueryId.fromString(queryId),
         {
           code: 'PROCESSING_ERROR',
           message: error instanceof Error ? error.message : 'Unknown error',
@@ -161,7 +159,7 @@ export class TTSApplicationService {
   async getQueryResult(queryId: string): Promise<Result<TTSResult, string>> {
     try {
       Logger.info('Fetching query result', { queryId });
-      const result = await this.resultRepository.findByQueryId(new QueryId(queryId));
+      const result = await this.resultRepository.findByQueryId(QueryId.fromString(queryId));
       
       if (!result) {
         return Result.failure('Result not found');
@@ -211,7 +209,7 @@ export class TTSApplicationService {
   async deleteQuery(queryId: string): Promise<Result<void, string>> {
     try {
       Logger.info('Deleting query', { queryId });
-      const id = new QueryId(queryId);
+      const id = QueryId.fromString(queryId);
       
       // Delete both query and result
       await this.queryRepository.delete(id);

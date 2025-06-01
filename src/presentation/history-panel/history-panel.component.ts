@@ -1,4 +1,4 @@
-import { Component, signal, computed, Output, EventEmitter } from '@angular/core';
+import { Component, signal, computed, Output, EventEmitter, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IntegratedHistoryStorageService, HistoryItem, StorageInfo, FileSystemStorageState, FolderReconnectionPrompt } from '../../integration/history-storage.service';
@@ -17,6 +17,7 @@ import { TruncateTextPipe } from '../shared/pipes/truncate-text.pipe'; // Correc
 })
 export class HistoryPanelComponent {
   @Output() historyItemSelected = new EventEmitter<HistoryItem>();
+  @Output() playItem = new EventEmitter<HistoryItem>();
   // State - removed collapsible functionality
   searchQuery = signal('');
   selectedItemId = signal<string | null>(null);
@@ -84,10 +85,24 @@ export class HistoryPanelComponent {
     return this.fileSystemState().isSupported;
   });
   constructor(private historyService: IntegratedHistoryStorageService,
-              public playbackService: PlaybackService) {
+              public playbackService: PlaybackService,
+              public cdr: ChangeDetectorRef) {
     // Subscribe to history changes
     this.historyService.history$.subscribe(history => {
-      this.history.set(history);
+      // Sort history by creation date (newest first)
+      const sortedHistory = [...history].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      this.history.set(sortedHistory);
+      
+      // Automatically select the latest item when the history list is updated
+      if (sortedHistory.length > 0) {
+        const latestItem = sortedHistory[0]; // Latest item is now the first after sorting
+        // Only select if no item is currently selected or if the latest item is different
+        if (!this.selectedItemId() || this.selectedItemId() !== latestItem.id) {
+          this.selectItem(latestItem);
+          // Manually trigger change detection to ensure the UI updates after selection
+          this.cdr.detectChanges();
+        }
+      }
     });
 
     // Subscribe to storage info changes
@@ -107,12 +122,33 @@ export class HistoryPanelComponent {
 
   // Actions
   selectItem(item: HistoryItem): void {
-    this.selectedItemId.set(item.id);
-    this.historyItemSelected.emit(item);
-    if (this.playbackService.playingItemId() !== item.id) {
-      this.playbackService.stop();
+    // Use a small timeout to ensure the history list has potentially rendered the new item
+    // setTimeout(() => {
+      this.selectedItemId.set(item.id);
+      this.historyItemSelected.emit(item);
+    // }, 0); // Zero delay timeout
+  }
+
+  // Add new method to handle play/pause click on a history item
+  onHistoryItemPlayPauseClick(item: HistoryItem, event: Event): void {
+    event.stopPropagation(); // Prevent the default item selection behavior
+
+    // Check if the event was triggered by a user interaction
+    if (!event.isTrusted) {
+      return; // Ignore programmatic clicks
+    }
+
+    // Check if the clicked item is currently playing
+    if (this.playbackService.playingItemId() === item.id && this.playbackService.isPlaying()) {
+      this.playbackService.pause(); // Pause if this item is currently playing
+    } else {
+      // Select the item before toggling playback
+      this.selectItem(item);
+      // Then call PlaybackService to toggle playback for this item
+      this.playbackService.togglePlayPause(item); 
     }
   }
+
   async deleteItem(item: HistoryItem, event: Event): Promise<void> {
     event.stopPropagation();
     if (this.playbackService.playingItemId() === item.id) {

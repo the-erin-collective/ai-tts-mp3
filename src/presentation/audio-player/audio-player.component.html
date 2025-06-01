@@ -25,7 +25,7 @@
 
           <div class="time-info">
             <span class="current-time">{{ playbackService.currentTime() | formatDuration }}</span>
-            <span class="total-time">{{ currentResult()?.duration | formatDuration }}</span>
+            <span class="total-time">{{ playbackService.totalDuration() | formatDuration }}</span>
           </div>          <div
           class="progress-bar"
           (click)="onProgressBarClick($event)"

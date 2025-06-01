@@ -51,14 +51,17 @@ export class LocalStorageTTSSettingsRepository extends TTSSettingsRepository {
         return null;
       }
 
-      const data = JSON.parse(stored);
-      const settings: TTSSettings = {
+      const data = JSON.parse(stored);      const settings: TTSSettings = {
         provider: data.provider,
         model: data.model,
         voice: data.voice
       };
 
-      Logger.info('TTS settings loaded from local storage', { provider: settings.provider });
+      Logger.info('TTS settings loaded from local storage', { 
+        provider: settings.provider || 'none',
+        model: settings.model || 'none',
+        voice: settings.voice || 'none'
+      });
       return settings;
     } catch (error: unknown) {
       Logger.error('Failed to load TTS settings from local storage', error as Error);

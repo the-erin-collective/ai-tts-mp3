@@ -110,18 +110,26 @@ export class FileSystemStorageService {
     // but calculateStorageInfo is now SSR-safe.
     return this.storageInfoSubject.value;
   }
-
   // Initialize service and check for previous folder state (Browser only)
   private async initializeService(): Promise<void> {
     if (!this.isBrowser) return; // Ensure this only runs in the browser
+    
+    console.log('[FileSystemStorageService] Initializing service...');
     
     await this.loadStorageState();
     
     // Check if there was a previously unlocked folder based on the loaded state
     const loadedState = this.fileSystemStateSubject.value; // Check the state loaded by loadStorageState
     
+    console.log('[FileSystemStorageService] Loaded state:', {
+      isEnabled: loadedState.isEnabled,
+      selectedPath: loadedState.selectedPath,
+      isSupported: this.isFileSystemAccessSupported()
+    });
+    
     if (loadedState.isEnabled && loadedState.selectedPath && this.isFileSystemAccessSupported()) {
       // Prompt user to reconnect to previous folder
+      console.log('[FileSystemStorageService] Prompting user to reconnect to previous folder');
       this.folderReconnectionSubject.next({
         previousPath: loadedState.selectedPath,
         shouldPrompt: true
@@ -131,9 +139,9 @@ export class FileSystemStorageService {
     }
 
     // No previous folder in loaded state or API not supported, load normally
+    console.log('[FileSystemStorageService] Loading history normally (no previous folder or API not supported)');
     await this.loadHistory();
   }
-
   // Check if user wants to reconnect to previous folder (Browser only)
   async handleFolderReconnection(reconnect: boolean): Promise<void> {
     if (!this.isBrowser) return; // Ensure this only runs in the browser
@@ -141,24 +149,30 @@ export class FileSystemStorageService {
     const prompt = this.folderReconnectionSubject.value;
     if (!prompt) return;
 
+    console.log(`[FileSystemStorageService] User ${reconnect ? 'accepted' : 'declined'} folder reconnection`);
     this.folderReconnectionSubject.next(null); // Clear the prompt
 
     if (reconnect) {
       // Try to reconnect to the folder
+      console.log('[FileSystemStorageService] Attempting to reconnect to folder...');
       const result = await this.enableFileSystemStorage(true);
       if (result.success) {
         // Successfully reconnected, history has been loaded from file system
+        console.log('[FileSystemStorageService] Successfully reconnected to folder');
         return;
       } else {
         // Failed to reconnect, fall back to localStorage
+        console.log('[FileSystemStorageService] Failed to reconnect, falling back to localStorage');
         this.clearPreviousFolderState();
       }
     } else {
       // User declined, clear the previous folder state
+      console.log('[FileSystemStorageService] User declined reconnection, clearing previous folder state');
       this.clearPreviousFolderState();
     }
 
     // Load from localStorage
+    console.log('[FileSystemStorageService] Loading from localStorage after folder reconnection handling');
     await this.loadHistory();
   }
 
@@ -468,18 +482,16 @@ export class FileSystemStorageService {
       console.error('Error saving history to file system:', error);
     }
   }
-
   private saveToLocalStorage(history: HistoryItem[]): void {
     if (!this.isBrowser) return; // Skip if not in browser
     try {
       // Only save a limited number of items to localStorage
       const itemsToSave = history.slice(0, 100); // Save latest 100 items
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(itemsToSave.map(this.serializeHistoryItemForLocalStorage)));
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(itemsToSave.map(item => this.serializeHistoryItemForLocalStorage(item))));
     } catch (error) {
       console.error('Error saving history to localStorage:', error);
     }
   }
-
   // Load history from either localStorage or file system (Browser only)
   private async loadHistory(): Promise<void> {
     if (!this.isBrowser) {
@@ -489,27 +501,35 @@ export class FileSystemStorageService {
      }
 
     const state = this.getFileSystemState();
+    console.log('[FileSystemStorageService] loadHistory called with state:', {
+      isEnabled: state.isEnabled,
+      hasDirectoryHandle: !!state.directoryHandle
+    });
 
     let history: HistoryItem[] = [];
     if (state.isEnabled && state.directoryHandle) {
       // Load from file system
+      console.log('[FileSystemStorageService] Loading history from file system...');
       history = await this.loadFromFileSystem();
+      console.log(`[FileSystemStorageService] Loaded ${history.length} items from file system`);
     } else {
       // Load from localStorage (fallback)
+      console.log('[FileSystemStorageService] Loading history from localStorage...');
       this.loadFromLocalStorage(); // This method directly updates historySubject and storageInfoSubject
+      console.log(`[FileSystemStorageService] Loaded ${this.historySubject.value.length} items from localStorage`);
       return; // Exit after localStorage load
     }
 
     // Update observable with loaded history (if from file system)
     this.historySubject.next(history);
     this.updateStorageInfo();
-  }
-
-   private async loadFromFileSystem(): Promise<HistoryItem[]> {
+  }   private async loadFromFileSystem(): Promise<HistoryItem[]> {
      if (!this.isBrowser || !this.fileSystemStateSubject.value.directoryHandle) {
+       console.log('[FileSystemStorageService] Cannot load from file system: not in browser or no directory handle');
        return []; // Return empty array if not in browser or no handle
      }
 
+     console.log('[FileSystemStorageService] loadFromFileSystem called');
      const handle = this.fileSystemStateSubject.value.directoryHandle;
      let metadataFileHandle: FileSystemFileHandle | null = null;
      let history: HistoryItem[] = [];
@@ -518,57 +538,90 @@ export class FileSystemStorageService {
        // Get the metadata file handle
        metadataFileHandle = await (handle as any).getFileHandle(this.METADATA_FILE, { create: false }).catch((e: any) => {
          if (e.name === 'NotFoundError') {
+           console.log('[FileSystemStorageService] Metadata file not found (new folder)');
            return null; // File not found is expected for a new folder
          }
          throw e; // Re-throw other errors
        });
 
        if (metadataFileHandle) {
-         // Read the metadata file
+         console.log('[FileSystemStorageService] Found metadata file, reading contents...');         // Read the metadata file
          const file = await metadataFileHandle.getFile();
          const contents = await file.text();
          const metadata = JSON.parse(contents);
 
          // Load history items based on metadata
-         if (metadata.history && Array.isArray(metadata.history)) {
+         let historyArray = null;
+         
+         if (Array.isArray(metadata)) {
+           // Direct array format (legacy format)
+           console.log(`[FileSystemStorageService] Found direct array with ${metadata.length} items`);
+           historyArray = metadata;
+         } else if (metadata.history && Array.isArray(metadata.history)) {
+           // Wrapped format with history property (current format)
+           console.log(`[FileSystemStorageService] Found wrapped format with ${metadata.history.length} items in metadata`);
+           historyArray = metadata.history;
+         } else {
+           console.log('[FileSystemStorageService] No valid history data found in metadata file');
+         }
+
+         if (historyArray) {
+           console.log(`[FileSystemStorageService] Processing ${historyArray.length} history items...`);
            // Use a loop to load each item individually
-           for (const serializedItem of metadata.history) {
+           for (const serializedItem of historyArray) {
              try {
                const historyItem = await this.deserializeHistoryItemFromFileSystem(serializedItem);
                history.push(historyItem);
              } catch (itemError) {
-               console.error('Error deserializing history item from file system:', itemError, serializedItem);
+               console.error('[FileSystemStorageService] Error deserializing history item from file system:', itemError, serializedItem);
                // Decide whether to skip or include partial item on error
              }
            }
+           console.log(`[FileSystemStorageService] Successfully deserialized ${history.length} items from file system`);
          }
+       } else {
+         console.log('[FileSystemStorageService] No metadata file found, returning empty history');
        }
        return history;
 
      } catch (error) {
-       console.error('Error loading history from file system:', error);
+       console.error('[FileSystemStorageService] Error loading history from file system:', error);
        return []; // Return empty array on error
      }
-   }
-
-   private loadFromLocalStorage(): void {
+   }private loadFromLocalStorage(): void {
      if (!this.isBrowser) {
        return; // Skip if not in browser
      }
 
-     try {
+     console.log('[FileSystemStorageService] loadFromLocalStorage called');     try {
        const storedHistory = localStorage.getItem(this.STORAGE_KEY);
-       if (storedHistory) {
+       if (storedHistory) {         console.log('[FileSystemStorageService] Found stored history in localStorage');
          // Ensure we have valid data structure even with old versions
-         const history: HistoryItem[] = JSON.parse(storedHistory).map(this.deserializeHistoryItem);
+         const parsedHistory = JSON.parse(storedHistory);
+         console.log(`[FileSystemStorageService] Parsed ${parsedHistory.length} items from localStorage`);
+         const history: HistoryItem[] = parsedHistory.map((item: any, index: number) => {
+           try {
+             console.log(`[FileSystemStorageService] Deserializing item ${index + 1}/${parsedHistory.length}:`, item.id);
+             return this.deserializeHistoryItem(item);
+           } catch (error) {
+             console.error(`[FileSystemStorageService] Error deserializing item ${index + 1}:`, error, item);
+             throw error; // Re-throw to see the full error
+           }
+         });
          this.historySubject.next(history);
+         console.log(`[FileSystemStorageService] Successfully loaded ${history.length} items from localStorage`);
        } else {
+          console.log('[FileSystemStorageService] No stored history found in localStorage');
           this.historySubject.next([]);
        }
      } catch (error) {
-       console.error('Error loading history from localStorage:', error);
+       console.error('[FileSystemStorageService] Error loading history from localStorage:', error);
        this.historySubject.next([]); // Load empty history on error
      }
+     
+     // Update storage info after loading history
+     this.updateStorageInfo();
+     console.log('[FileSystemStorageService] Storage info updated after loading from localStorage');
     }
 
   // Helper function to deserialize a history item from file system metadata

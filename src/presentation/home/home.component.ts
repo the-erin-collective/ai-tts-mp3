@@ -270,6 +270,10 @@ export class HomeComponent implements OnInit, AfterViewInit {
         } else { // Saving to history is off
            // If saving is off, just store the generated item temporarily
            this.tempHistoryItem.set(historyItemToProcess);
+           // Clear any existing selection in the history panel since we're not saving to history
+           if (this.historyPanel) {
+             this.historyPanel.clearSelection();
+           }
            // Manually trigger onHistoryItemSelected with the temporary item
            this.onHistoryItemSelected(this.tempHistoryItem());
         }

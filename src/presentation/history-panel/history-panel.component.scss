@@ -341,26 +341,29 @@
   display: flex;
   flex-direction: column;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #21262d;
+  margin-bottom: 0.5rem;
+  border: 1px solid #21262d; // Default border for all items
+  border-radius: 6px; // Slightly rounded corners
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
   outline: none; /* Remove default focus outline */
 
   &:last-child {
-    border-bottom: none;
+    margin-bottom: 0;
   }
 
   &:hover {
     background-color: #161b22; // Slightly darker background on hover
+    border-color: #30363d; // Slightly lighter border on hover
   }
 
   &:focus-visible { /* Style for keyboard focus */
     background-color: #161b22; // Use the same hover style for focus
-    box-shadow: inset 2px 0 0 0 #1f6feb; // Add a left border on focus
+    box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.3); // Focus ring instead of inset border
   }
 
   &.selected {
-    border: 1px solid #1f6feb; // Blue border
+    border: 1px solid #1f6feb; // Blue border for selected items
     background-color: #161b22; // Darker background for selection
   }
 }

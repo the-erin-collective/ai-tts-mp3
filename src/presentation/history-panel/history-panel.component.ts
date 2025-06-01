@@ -16,7 +16,7 @@ import { TruncateTextPipe } from '../shared/pipes/truncate-text.pipe'; // Correc
   styleUrl: './history-panel.component.scss'
 })
 export class HistoryPanelComponent {
-  @Output() historyItemSelected = new EventEmitter<HistoryItem>();
+  @Output() historyItemSelected = new EventEmitter<HistoryItem | null>();
   @Output() playItem = new EventEmitter<HistoryItem>();
   // State - removed collapsible functionality
   searchQuery = signal('');
@@ -89,6 +89,7 @@ export class HistoryPanelComponent {
               public cdr: ChangeDetectorRef) {
     // Subscribe to history changes
     this.historyService.history$.subscribe(history => {
+      console.log(`[HistoryPanel] Received history update: ${history.length} items`);
       // Sort history by creation date (newest first)
       const sortedHistory = [...history].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       this.history.set(sortedHistory);
@@ -127,6 +128,11 @@ export class HistoryPanelComponent {
       this.selectedItemId.set(item.id);
       this.historyItemSelected.emit(item);
     // }, 0); // Zero delay timeout
+  }
+
+  clearSelection(): void {
+    this.selectedItemId.set(null);
+    this.historyItemSelected.emit(null);
   }
 
   // Add new method to handle play/pause click on a history item
